@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chip Tuning IL</title>
+  <style>
+    :root{
+      --bg:#0b0b0c;
+      --panel:#151517;
+      --panel-2:#1b1c1f;
+      --text:#e7e7ea;
+      --muted:#b7b7bd;
+      --brand:#e11d2e;
+      --accent:#e11d2e;
+      --ring:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,Helvetica,sans-serif;
+      /* фон: файл положи в папку "фон" рядом с html */
+      background:var(--bg) center/cover fixed no-repeat url("фон/Flux_Schnell_A_darkcolored_sports_sedan_black_or_dark_grey_wit_2.jpg");
+      color:var(--text);
+    }
+    /* лёгкий диммер для читабельности */
+    body:before{
+      content:"";
+      position:fixed;inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.50));
+      pointer-events:none;z-index:-1;
+    }
+
+    .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+    /* TOPBAR */
+    .top{
+      position:sticky;top:0;z-index:50;
+      backdrop-filter:saturate(140%) blur(6px);
+      background:rgba(10,10,12,.45);
+      border-bottom:1px solid var(--ring);
+    }
+    .nav{display:flex;align-items:center;gap:18px;height:56px}
+    .brand{font-weight:800;letter-spacing:.4px}
+    .navlinks{display:flex;gap:16px;margin-inline-start:auto}
+    .navlinks a{
+      color:var(--text);text-decoration:none;padding:8px 10px;border-radius:10px;font-weight:700
+    }
+    .navlinks a:hover{background:rgba(255,255,255,.06)}
+    .lang{display:flex;gap:8px;margin-inline-start:12px}
+    .chip{border:1px solid var(--ring);padding:6px 9px;border-radius:999px;font-size:.85rem;cursor:pointer;color:var(--text);background:transparent}
+    .chip.active{background:var(--brand);border-color:transparent;color:#fff}
+
+    /* HERO */
+    .hero{min-height:100svh;display:grid;place-items:center;text-align:center}
+    .hero h1{font-size:clamp(28px,4.5vw,50px);margin:.2em 0 .2em}
+    .hero p{color:var(--muted);max-width:820px;margin:0 auto 20px;font-size:clamp(14px,2vw,18px)}
+    .cta{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:800}
+    .cta:hover{filter:brightness(1.1)}
+
+    /* SECTIONS */
+    section{padding:56px 0}
+    .section-title{font-size:clamp(22px,3.4vw,32px);margin:0 0 22px;font-weight:800}
+
+    /* SERVICES GRID */
+    .grid{display:grid;gap:18px;grid-template-columns:repeat(12,1fr)}
+    .card{
+      grid-column:span 12;background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--ring);border-radius:14px;overflow:hidden;
+      display:grid;grid-template-columns:1fr;min-height:180px
+    }
+    .card-inner{display:flex;gap:18px;align-items:stretch}
+    .card .text{padding:18px 18px 22px;display:flex;flex-direction:column;gap:10px}
+    .card .title{font-size:clamp(18px,2.5vw,22px);font-weight:800;margin:0}
+    .card .desc{color:var(--muted);margin:0;line-height:1.45}
+    /* Removed .more styles */
+    .thumb{flex:1;min-height:180px;background:#0f0f12 center/cover no-repeat}
+    /* декоративные градиенты вместо внешних картинок */
+    .t1{background-image:radial-gradient(ellipse at 70% 30%, rgba(255,0,0,.4), transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,255,255,.18), transparent 55%)}
+    .t2{background-image:radial-gradient(ellipse at 30% 30%, rgba(0,180,255,.35), transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(255,255,255,.14), transparent 55%)}
+    .t3{background-image:radial-gradient(ellipse at 60% 40%, rgba(255,180,0,.35), transparent 60%)}
+    .t4{background-image:radial-gradient(ellipse at 30% 70%, rgba(110,220,120,.35), transparent 60%)}
+    .t5{background-image:radial-gradient(ellipse at 60% 30%, rgba(160,110,255,.35), transparent 60%)}
+    .t6{background-image:radial-gradient(ellipse at 20% 40%, rgba(255,90,90,.35), transparent 60%)}
+
+    @media (min-width:820px){
+      .card{grid-column:span 6}
+      .card{grid-template-columns:5fr 7fr}
+      .thumb{order:2}
+      [dir="ltr"] .thumb{order:1}
+    }
+
+    /* CONTACTS */
+    .contact-box{
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--ring);border-radius:16px;padding:22px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .contact-box p{margin:0 0 14px}
+    .line{display:flex;gap:12px;align-items:baseline;margin:10px 0;padding:10px 0;border-top:1px solid var(--ring)}
+    .line:first-of-type{border-top:none}
+    .label{min-width:110px;font-weight:800;color:#e6e6e6}
+    .val{color:#ffffff;text-decoration:none;word-break:break-word}
+    .val:hover{opacity:.9}
+    .wa{color:#25D366}
+    .muted{color:var(--muted)}
+
+    /* Form Styles */
+    .contact-form h4{font-weight:700;margin:20px 0 14px;color:var(--text)}
+    .contact-form form{padding-top:10px;border-top:1px solid var(--ring)}
+    .contact-form input, .contact-form textarea{
+      width:100%;padding:12px;margin-bottom:10px;
+      border:1px solid var(--ring);border-radius:8px;
+      background:var(--panel-2);color:var(--text);font-size:1rem;
+      outline:none;
+    }
+    .contact-form textarea{resize:vertical;min-height:100px}
+    .contact-form button[type="submit"]{
+      width:100%;padding:12px;border-radius:10px;font-weight:700;
+      background:var(--brand);color:#fff;border:none;cursor:pointer;
+    }
+    .contact-form button[type="submit"]:hover{filter:brightness(1.1)}
+
+
+    /* anchors */
+    .anchor{scroll-margin-top:74px}
+  </style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="wrap nav">
+      <div class="brand">CHIP TUNING • IL</div>
+
+      <nav class="navlinks">
+        <a href="#home" data-i18n="nav_home">דף הבית</a>
+        <a href="#services" data-i18n="nav_services">שירותים</a>
+        <a href="#contact" data-i18n="nav_contacts">צור קשר</a>
+      </nav>
+
+      <div class="lang">
+        <button class="chip" data-lang="he">HE</button>
+        <button class="chip" data-lang="ru">RU</button>
+        <button class="chip" data-lang="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="home" class="hero anchor">
+    <div class="wrap" style="text-align:center">
+      <div class="muted" data-i18n="kicker">טכנולוגיות שמשפרות את הרכב</div>
+      <h1 data-i18n="h1">Профессиональный чип‑тюнинг и диагностика в Израиле</h1>
+      <p data-i18n="h1_sub">Чип-тюнинг — это точная программная настройка ЭБУ для повышения мощности, экономичности и надежности двигателя. Мы выполняем адаптацию Stage 1–2, оптимизацию впрыска и зажигания под климат и топливо Израиля. Наши решения помогают устранить ошибки, связанные с системой катализатора, DPF и AdBlue (SCR), улучшить отклик педали, снизить расход топлива и продлить срок службы двигателя. Мы используем только безопасные методы и сохраняем экологические нормы — никаких вмешательств, противоречащих требованиям производителей.</p>
+      <a class="cta" href="#services" data-i18n="cta">К услугам</a>
+    </div>
+  </main>
+
+  <section id="services" class="anchor">
+    <div class="wrap">
+      <h2 class="section-title" data-i18n="services_title">Полный спектр решений для чип‑тюнинга в Израиле</h2>
+
+      <div class="grid">
+
+        <article class="card">
+          <div class="thumb t1"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s1_title">Оптимизация системы выхлопа</h3>
+            <p class="desc" data-i18n="s1_desc">Безопасное решение ошибок катализатора и O2‑датчиков. Настройка параметров для стабильной и экономичной работы.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="thumb t2"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s2_title">Система AdBlue / SCR</h3>
+            <p class="desc" data-i18n="s2_desc">Диагностика и калибровка системы впрыска мочевины для снижения расхода и предотвращения ошибок.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="thumb t3"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s3_title">Stage 1 / Stage 2 / Stage 3</h3>
+            <p class="desc" data-i18n="s3_desc">Программная оптимизация мощности и крутящего момента в рамках безопасных заводских лимитов.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="thumb t4"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s4_title">Настройка впрыска и зажигания</h3>
+            <p class="desc" data-i18n="s4_desc">Точная регулировка подачи топлива и углов опережения зажигания для максимальной эффективности.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="thumb t5"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s5_title">Диагностика до и после</h3>
+            <p class="desc" data-i18n="s5_desc">Полная проверка параметров двигателя до и после настройки для контроля результата.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="thumb t6"></div>
+          <div class="text">
+            <h3 class="title" data-i18n="s6_title">Турбонаддув и топливная система</h3>
+            <p class="desc" data-i18n="s6_desc">Калибровка работы турбины и давления топлива для стабильной тяги и надёжности.</p>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="anchor">
+    <div class="wrap">
+      <h2 class="section-title" data-i18n="contact_title">Связаться</h2>
+
+      <div class="contact-box">
+        <p class="muted" data-i18n="contact_lead">Напишите нам в WhatsApp или позвоните. Работаем по записи.</p>
+
+        <div class="line">
+          <span class="label" data-i18n="contact_whatsapp">WhatsApp</span>
+          <a class="val wa" href="https://wa.me/972522820208" rel="noopener" target="_blank">+972 52-282-0208</a>
+        </div>
+
+        <div class="line">
+          <span class="label" data-i18n="contact_phone">Телефон</span>
+          <a class="val tel" href="tel:+972522820208">+972 52-282-0208</a>
+        </div>
+
+        <div class="contact-form">
+          <h4 data-i18n="form_title">Форма обратной связи</h4>
+          <form action="https://formspree.io/f/mldpvrpe" method="POST">
+
+            <input type="hidden" name="_subject" value="Запрос от клиента о чип тюнинг">
+            <input type="hidden" name="_next" value="https://yourwebsite.com/thankyou.html" />
+
+            <input type="text" name="Имя" data-i18n-placeholder="form_name" placeholder="Ваше Имя" required>
+            <input type="tel" name="Телефон" data-i18n-placeholder="form_phone" placeholder="Ваш номер телефона" required>
+            <textarea name="Сообщение" data-i18n-placeholder="form_message" placeholder="Ваше сообщение..." required></textarea>
+
+            <button type="submit" data-i18n="form_send">Отправить сообщение</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // i18n словарь
+    const I18N = {
+      he:{
+        nav_home:"דף הבית", nav_services:"שירותים", nav_contacts:"צור קשר",
+        kicker:"טכנולוגיות שמשפרות את הרכב",
+        h1:"צ׳יפ טיונינג מקצועי ודיאגנוסטיקה בישראל",
+        h1_sub:"צ'יפ טיונינג — כיוונון תוכנה מדויק של יחידת הבקרה האלקטרונית (ECU) להגברת כוח המנוע, חסכון בדלק ואמינות. אנו מבצעים אדפטציה Stage 1-2, אופטימיזציה של ההזרקה וההצתה, מותאמות לאקלים ולדלק הישראלי. הפתרונות שלנו מסייעים בתיקון תקלות הקשורות למערכת הממיר הקטליטי, DPF ואוריאה (SCR), שיפור תגובת הדוושה, הפחתת צריכת הדלק והארכת חיי המנוע. אנו משתמשים בשיטות בטוחות בלבד ושומרים על תקני איכות הסביבה — ללא התערבויות המנוגדות לדרישות היצרנים.",
+        cta:"לשירותים",
+        services_title:"מגוון פתרונות מלא לצ׳יפ טיונינג בישראל",
+        s1_title:"אופטימיזציית מערכת הפליטה",
+        s1_desc:"פתרון בטוח לתקלות הקשורות לממיר ולחיישני חמצן. כיוון פרמטרים לעבודה יציבה וחסכונית של המנוע.",
+        s2_title:"מערכת AdBlue / SCR",
+        s2_desc:"אבחון וכיול מערכת הזרקת אוריאה להפחתת צריכה ולמניעת תקלות.",
+        s3_title:"Stage 1 / Stage 2 / Stage 3",
+        s3_desc:"אופטימיזציית כוח ומומנט במסגרת גבולות היצרן הבטוחים.",
+        s4_title:"כיוון הזרקה והצתה",
+        s4_desc:"כיול מדויק של אספקת הדלק وزוויות ההצתה למקסימום יעילות.",
+        s5_title:"דיאגנוסטיקה לפני ואחרי",
+        s5_desc:"בדיקה מלאה של פרמטרי המנוע לפני ואחרי הכיוונון לבקרת התוצאה.",
+        s6_title:"טורבו ומערכת הדלק",
+        s6_desc:"כיול פעולת הטורבו ולחץ הדלק למשיכה יציבה ואמינות.",
+        contact_title:"צור קשר",
+        contact_lead:"כתבו לנו ב‑WhatsApp או חייגו. עובדים בתיאום מראש.",
+        contact_whatsapp:"WhatsApp",
+        contact_phone:"טלפון",
+        // Form strings
+        form_title:"טופס יצירת קשר",
+        form_name:"השם שלך",
+        form_phone:"מספר הטלפון שלך",
+        form_message:"ההודעה שלך...",
+        form_send:"שלח הודעה"
+      },
+      ru:{
+        nav_home:"Главная", nav_services:"Услуги", nav_contacts:"Контакты",
+        kicker:"ТЕХНОЛОГИИ, КОТОРЫЕ ДЕЛАЮТ АВТО ЛУЧШЕ",
+        h1:"Профессиональный чип‑тюнинг и диагностика в Израиле",
+        h1_sub:"Чип-тюнинг — это точная программная настройка ЭБУ для повышения мощности, экономичности и надежности двигателя. Мы выполняем адаптацию Stage 1–2, оптимизацию впрыска и зажигания под климат и топливо Израиля. Наши решения помогают устранить ошибки, связанные с системой катализатора, DPF и AdBlue (SCR), улучшить отклик педали, снизить расход топлива и продлить срок службы двигателя. Мы используем только безопасные методы и сохраняем экологические нормы — никаких вмешательств, противоречащих требованиям производителей.",
+        cta:"К услугам",
+        services_title:"Полный спектр решений для чип‑тюнинга в Израиле",
+        s1_title:"Оптимизация системы выхлопа",
+        s1_desc:"Безопасное решение ошибок катализатора и O2‑датчиков. Настройка параметров для стабильной и экономичной работы.",
+        s2_title:"Система AdBlue / SCR",
+        s2_desc:"Диагностика и калибровка системы впрыска мочевины для снижения расхода и предотвращения ошибок.",
+        s3_title:"Stage 1 / Stage 2 / Stage 3",
+        s3_desc:"Программная оптимизация мощности и крутящего момента в рамках безопасных заводских лимитов.",
+        s4_title:"Настройка впрыска и зажигания",
+        s4_desc:"Точная регулировка подачи топлива и углов опережения зажигания для максимальной эффективности.",
+        s5_title:"Диагностика до и после",
+        s5_desc:"Полная проверка параметров двигателя до и после настройки для контроля результата.",
+        s6_title:"Турбонаддув и топливная система",
+        s6_desc:"Калибровка работы турбины и давления топлива для стабильной тяги и надёжности.",
+        contact_title:"Связаться",
+        contact_lead:"Напишите в WhatsApp или позвоните. Работаем по записи.",
+        contact_whatsapp:"WhatsApp",
+        contact_phone:"Телефон",
+        // Form strings
+        form_title:"Форма обратной связи",
+        form_name:"Ваше Имя",
+        form_phone:"Ваш номер телефона",
+        form_message:"Ваше сообщение...",
+        form_send:"Отправить сообщение"
+      },
+      en:{
+        nav_home:"Home", nav_services:"Services", nav_contacts:"Contacts",
+        kicker:"TECH THAT MAKES YOUR CAR BETTER",
+        h1:"Professional chip tuning and diagnostics in Israel",
+        h1_sub:"Chip tuning is a precise software adjustment of the ECU to increase engine power, efficiency, and reliability. We perform Stage 1–2 adaptation, injection, and ignition optimization tailored to the Israeli climate and fuel. Our solutions help eliminate faults related to the catalyst, DPF, and AdBlue (SCR) system, improve pedal response, reduce fuel consumption, and extend engine life. We use only safe methods and maintain ecological standards — no modifications that contradict manufacturer requirements.",
+        cta:"View services",
+        services_title:"Full range of chip‑tuning solutions in Israel",
+        s1_title:"Exhaust system optimization",
+        s1_desc:"Safe handling of catalyst and O2‑sensor faults. Parameter tuning for stable and economical operation.",
+        s2_title:"AdBlue / SCR system",
+        s2_desc:"Diagnostics and calibration of urea injection to reduce consumption and prevent faults.",
+        s3_title:"Stage 1 / Stage 2 / Stage 3",
+        s3_desc:"Power and torque optimization within safe factory limits.",
+        s4_title:"Injection and ignition tuning",
+        s4_desc:"Accurate fuel delivery and ignition advance calibration for maximum efficiency.",
+        s5_title:"Pre and post diagnostics",
+        s5_desc:"Full engine parameter check before and after tuning to verify the result.",
+        s6_title:"Turbo and fuel system",
+        s6_desc:"Turbo operation and fuel pressure calibration for stable pull and reliability.",
+        contact_title:"Contact",
+        contact_lead:"Message us on WhatsApp or call. By appointment.",
+        contact_whatsapp:"WhatsApp",
+        contact_phone:"Phone",
+        // Form strings
+        form_title:"Contact Form",
+        form_name:"Your Name",
+        form_phone:"Your Phone Number",
+        form_message:"Your Message...",
+        form_send:"Send Message"
+      }
+    };
+
+    const $ = (s, r=document)=>r.querySelector(s);
+    const $$ = (s, r=document)=>[...r.querySelectorAll(s)];
+
+    function setLang(code){
+      const dict = I18N[code] || I18N.he;
+      $$('[data-i18n]').forEach(el=>{
+        const k = el.getAttribute('data-i18n');
+        if(dict[k]) el.textContent = dict[k];
+      });
+      // Handle placeholders for form inputs
+      $$('[data-i18n-placeholder]').forEach(el=>{
+        const k = el.getAttribute('data-i18n-placeholder');
+        // Только если это input или textarea, обновляем placeholder
+        if((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && dict[k]) el.placeholder = dict[k];
+      });
+      // dir and lang
+      document.documentElement.lang = code === 'he' ? 'he' : code;
+      document.documentElement.dir  = code === 'he' ? 'rtl' : 'ltr';
+      $$('.chip').forEach(b=>b.classList.toggle('active', b.dataset.lang===code));
+    }
+
+    $$('.chip').forEach(b=>b.addEventListener('click', ()=>setLang(b.dataset.lang)));
+    // старт: иврит
+    setLang('he');
+  </script>
+
+</body>
+</html>
