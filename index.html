@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b0c" />
   <title>Chip Tuning IL</title>
   <style>
     :root{
@@ -17,18 +18,19 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,Helvetica,sans-serif;
   /* фон: файл bg.jpg теперь должен быть в корне репозитория (рядом с index.html) */
-  background:var(--bg) center/cover fixed no-repeat url("bg.jpg"); 
+  background:var(--bg) center/cover no-repeat url("bg.jpg"); 
   color:var(--text);
 }
     /* лёгкий диммер для читабельности */
     body:before{
       content:"";
       position:fixed;inset:0;
-      background:linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.50));
+      background:linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.75));
       pointer-events:none;z-index:-1;
     }
 
@@ -52,10 +54,27 @@ body{
     .chip{border:1px solid var(--ring);padding:6px 9px;border-radius:999px;font-size:.85rem;cursor:pointer;color:var(--text);background:transparent}
     .chip.active{background:var(--brand);border-color:transparent;color:#fff}
 
+    /* Mobile menu button */
+    .menu-btn{display:none;margin-inline-start:auto;border:1px solid var(--ring);background:transparent;color:var(--text);padding:6px 10px;border-radius:10px;font-size:18px;line-height:1;cursor:pointer}
+    .menu-btn:focus{outline:2px solid var(--ring)}
+
+    /* Mobile layout tweaks */
+    @media (max-width:720px){
+      .nav{flex-wrap:wrap;height:auto;padding:8px 0}
+      .menu-btn{display:inline-flex;align-items:center;justify-content:center}
+      .navlinks,.lang{display:none}
+      body.menu-open .navlinks, body.menu-open .lang{display:flex}
+      body.menu-open .navlinks{order:3;width:100%;gap:10px}
+      body.menu-open .lang{order:4}
+      .navlinks a{padding:12px 14px}
+      section{padding:36px 0}
+      .wrap{padding:0 16px}
+    }
+
     /* HERO */
     .hero{min-height:100svh;display:grid;place-items:center;text-align:center}
     .hero h1{font-size:clamp(28px,4.5vw,50px);margin:.2em 0 .2em}
-    .hero p{color:var(--muted);max-width:820px;margin:0 auto 20px;font-size:clamp(14px,2vw,18px)}
+    .hero p{color:var(--text);max-width:820px;margin:0 auto 20px;font-size:clamp(14px,2vw,18px);line-height:1.6;text-shadow:0 1px 2px rgba(0,0,0,.55)}
     .cta{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:800}
     .cta:hover{filter:brightness(1.1)}
 
@@ -70,40 +89,44 @@ body{
       border:1px solid var(--ring);border-radius:14px;overflow:hidden;
       display:grid;grid-template-columns:1fr;min-height:180px
     }
-    .card-inner{display:flex;gap:18px;align-items:stretch}
+    /* .card-inner{display:flex;gap:18px;align-items:stretch}  // не используется */
     .card .text{padding:18px 18px 22px;display:flex;flex-direction:column;gap:10px}
     .card .title{font-size:clamp(18px,2.5vw,22px);font-weight:800;margin:0}
-    .card .desc{color:var(--muted);margin:0;line-height:1.45}
+    .card .desc{color:#d9d9de;margin:0;line-height:1.6}
     
     .thumb{
-        flex:1;min-height:180px;background:#0f0f12 center/cover no-repeat;
-        /* Новые стили для текста внутри thumb, если требуется */
+        flex:1;background:#0f0f12 center/cover no-repeat;
         display:flex;align-items:center;justify-content:center;
-        position:relative;
-        background-size: cover; /* Добавлено, чтобы изображения заполняли блок */
-    }
+        position:relative;background-size:cover;
+        aspect-ratio:16/9;
+}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;}
     
     @media (min-width:820px){
       .card{grid-column:span 6}
       .card{grid-template-columns:5fr 7fr}
-      .thumb{order:2}
+      .thumb{order:2;aspect-ratio:auto;min-height:100%}
       [dir="ltr"] .thumb{order:1}
     }
 
+
     /* CONTACTS */
+    .contact-grid{display:grid;grid-template-columns:1fr;gap:18px}
+    @media (min-width:820px){.contact-grid{grid-template-columns:1fr 1fr}}
+
     .contact-box{
       background:linear-gradient(180deg, var(--panel), var(--panel-2));
       border:1px solid var(--ring);border-radius:16px;padding:22px;
       box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
-    .contact-box p{margin:0 0 14px}
+    .contact-box p{margin:0 0 14px;color:#e8e8ee;line-height:1.65;font-size:1.05rem}
     .line{display:flex;gap:12px;align-items:baseline;margin:10px 0;padding:10px 0;border-top:1px solid var(--ring)}
     .line:first-of-type{border-top:none}
-    .label{min-width:110px;font-weight:800;color:#e6e6e6}
-    .val{color:#ffffff;text-decoration:none;word-break:break-word}
+    .label{min-width:110px;font-weight:800;color:#ffffff;font-size:1rem}
+    .val{color:#ffffff;text-decoration:none;word-break:break-word;font-weight:700;font-size:1.1rem}
     .val:hover{opacity:.9}
     .wa{color:#25D366}
-    .muted{color:var(--muted)}
+    .muted{color:#d9d9de}
 
     /* Form Styles */
     .contact-form h4{font-weight:700;margin:20px 0 14px;color:var(--text)}
@@ -124,6 +147,11 @@ body{
 
     /* anchors */
     .anchor{scroll-margin-top:74px}
+
+    /* Desktop-only parallax for performance */
+    @media (min-width:768px){
+      body{background-attachment:fixed}
+    }
   </style>
 </head>
 <body>
@@ -131,6 +159,7 @@ body{
   <header class="top">
     <div class="wrap nav">
       <div class="brand">CHIP TUNING • IL</div>
+      <button class="menu-btn" aria-label="Menu" title="Menu">☰</button>
 
       <nav class="navlinks">
         <a href="#home" data-i18n="nav_home">דף הבית</a>
@@ -217,34 +246,39 @@ body{
     <div class="wrap">
       <h2 class="section-title" data-i18n="contact_title">Связаться</h2>
 
-      <div class="contact-box">
-        <p class="muted" data-i18n="contact_lead">Напишите нам в WhatsApp или позвоните. Работаем по записи.</p>
+      <div class="contact-grid">
+          <!-- Box 1: WhatsApp & Phone -->
+          <div class="contact-box">
+            <p class="muted" data-i18n="contact_lead">Напишите нам в WhatsApp или позвоните. Работаем по записи.</p>
+            <div class="line">
+              <span class="label" data-i18n="contact_whatsapp">WhatsApp</span>
+              <a class="val wa" href="https://wa.me/972528280208" rel="noopener" target="_blank">+972 52-828-0208</a>
+            </div>
+            <div class="line">
+              <span class="label" data-i18n="contact_phone">Телефон</span>
+              <a class="val tel" href="tel:+972528280208">+972 52-828-0208</a>
+            </div>
+            <div class="line">
+              <span class="label" data-i18n="contact_address_label">Локация</span>
+              <span class="val" data-i18n="contact_address_val">Центр страны: Тель‑Авив‑Яффо</span>
+            </div>
+          </div>
 
-        <div class="line">
-          <span class="label" data-i18n="contact_whatsapp">WhatsApp</span>
-          <a class="val wa" href="https://wa.me/972582820208" rel="noopener" target="_blank">+972 52-828-0208</a>
+          <!-- Box 2: Contact form -->
+          <div class="contact-box contact-form">
+            <h4 data-i18n="form_title">Форма обратной связи</h4>
+            <form action="https://formspree.io/f/mldpvrpe" method="POST">
+              <input type="hidden" name="_subject" value="Запрос от клиента о чип тюнинг">
+              <input type="hidden" name="_next" value="https://yourwebsite.com/thankyou.html" />
+
+              <input type="text" name="Имя" data-i18n-placeholder="form_name" placeholder="Ваше Имя" required>
+              <input type="tel" name="Телефон" data-i18n-placeholder="form_phone" placeholder="Ваш номер телефона" required>
+              <textarea name="Сообщение" data-i18n-placeholder="form_message" placeholder="Ваше сообщение..." required></textarea>
+
+              <button type="submit" data-i18n="form_send">Отправить сообщение</button>
+            </form>
+          </div>
         </div>
-
-        <div class="line">
-          <span class="label" data-i18n="contact_phone">Телефон</span>
-          <a class="val tel" href="tel:+972582820208">+972 52-828-0208</a>
-        </div>
-
-        <div class="contact-form">
-          <h4 data-i18n="form_title">Форма обратной связи</h4>
-          <form action="https://formspree.io/f/mldpvrpe" method="POST">
-
-            <input type="hidden" name="_subject" value="Запрос от клиента о чип тюнинг">
-            <input type="hidden" name="_next" value="https://yourwebsite.com/thankyou.html" />
-
-            <input type="text" name="Имя" data-i18n-placeholder="form_name" placeholder="Ваше Имя" required>
-            <input type="tel" name="Телефон" data-i18n-placeholder="form_phone" placeholder="Ваш номер телефона" required>
-            <textarea name="Сообщение" data-i18n-placeholder="form_message" placeholder="Ваше сообщение..." required></textarea>
-
-            <button type="submit" data-i18n="form_send">Отправить сообщение</button>
-          </form>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -260,12 +294,12 @@ body{
         services_title:"מגוון פתרונות מלא לצ׳יפ טיונינג בישראל",
         s1_title:"אופטימיזציית מערכת הפליטה",
         s1_desc:"פתרון בטוח לתקלות הקשורות לממיר ולחיישני חמצן. כיוון פרמטרים לעבודה יציבה וחסכונית של המנוע.",
-        s2_title:"אוריה", /* ИЗМЕНЕНО: С "מערכת AdBlue / SCR" на "אוריה" */
+        s2_title:"אוריה", /* Изменено с "מערכת AdBlue / SCR" на "אוריה" */
         s2_desc:"אבחון וכיול מערכת הזרקת אוריאה להפחתת צריכה ולמניעת תקלות.",
         s3_title:"Stage 1 / Stage 2 / Stage 3",
         s3_desc:"אופטימיזציית כוח ומומנט במסגרת גבולות היצרן הבטוחים.",
         s4_title:"כיוון הזרקה והצתה",
-        s4_desc:"כיול מדויק של אספקת הדלק وزוויות ההצתה למקסימום יעילות.",
+        s4_desc:"כיול מדויק של אספקת הדלק וזוויות ההצתה למקסימום יעילות.",
         s5_title:"דיאגנוסטיקה לפני ואחרי",
         s5_desc:"בדיקה מלאה של פרמטרי המנוע לפני ואחרי הכיוונון לבקרת התוצאה.",
         s6_title:"טורבו ומערכת הדלק",
@@ -274,6 +308,8 @@ body{
         contact_lead:"כתבו לנו ב‑WhatsApp או חייגו. עובדים בתיאום מראש.",
         contact_whatsapp:"WhatsApp",
         contact_phone:"טלפון",
+        contact_address_label:"מיקום",
+        contact_address_val:"מרכז הארץ: תל אביב-יפו",
         // Form strings
         form_title:"טופס יצירת קשר",
         form_name:"השם שלך",
@@ -304,6 +340,8 @@ body{
         contact_lead:"Напишите в WhatsApp или позвоните. Работаем по записи.",
         contact_whatsapp:"WhatsApp",
         contact_phone:"Телефон",
+        contact_address_label:"Локация",
+        contact_address_val:"Центр страны: Тель‑Авив‑Яффо",
         // Form strings
         form_title:"Форма обратной связи",
         form_name:"Ваше Имя",
@@ -334,6 +372,8 @@ body{
         contact_lead:"Message us on WhatsApp or call. By appointment.",
         contact_whatsapp:"WhatsApp",
         contact_phone:"Phone",
+        contact_address_label:"Location",
+        contact_address_val:"Central Israel: Tel Aviv‑Yafo",
         // Form strings
         form_title:"Contact Form",
         form_name:"Your Name",
@@ -346,6 +386,10 @@ body{
     const $ = (s, r=document)=>r.querySelector(s);
     const $$ = (s, r=document)=>[...r.querySelectorAll(s)];
 
+    // Mobile menu toggle
+    const menuBtn = document.querySelector('.menu-btn');
+    if(menuBtn){ menuBtn.addEventListener('click', ()=> document.body.classList.toggle('menu-open')); }
+
     function setLang(code){
       const dict = I18N[code] || I18N.he;
       $$('[data-i18n]').forEach(el=>{
@@ -355,7 +399,6 @@ body{
       // Handle placeholders for form inputs
       $$('[data-i18n-placeholder]').forEach(el=>{
         const k = el.getAttribute('data-i18n-placeholder');
-        // Только если это input или textarea, обновляем placeholder
         if((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && dict[k]) el.placeholder = dict[k];
       });
       // dir and lang
