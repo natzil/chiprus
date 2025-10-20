@@ -74,16 +74,15 @@
     .card .text{padding:18px 18px 22px;display:flex;flex-direction:column;gap:10px}
     .card .title{font-size:clamp(18px,2.5vw,22px);font-weight:800;margin:0}
     .card .desc{color:var(--muted);margin:0;line-height:1.45}
-    /* Removed .more styles */
-    .thumb{flex:1;min-height:180px;background:#0f0f12 center/cover no-repeat}
-    /* декоративные градиенты вместо внешних картинок */
-    .t1{background-image:radial-gradient(ellipse at 70% 30%, rgba(255,0,0,.4), transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,255,255,.18), transparent 55%)}
-    .t2{background-image:radial-gradient(ellipse at 30% 30%, rgba(0,180,255,.35), transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(255,255,255,.14), transparent 55%)}
-    .t3{background-image:radial-gradient(ellipse at 60% 40%, rgba(255,180,0,.35), transparent 60%)}
-    .t4{background-image:radial-gradient(ellipse at 30% 70%, rgba(110,220,120,.35), transparent 60%)}
-    .t5{background-image:radial-gradient(ellipse at 60% 30%, rgba(160,110,255,.35), transparent 60%)}
-    .t6{background-image:radial-gradient(ellipse at 20% 40%, rgba(255,90,90,.35), transparent 60%)}
-
+    
+    .thumb{
+        flex:1;min-height:180px;background:#0f0f12 center/cover no-repeat;
+        /* Новые стили для текста внутри thumb, если требуется */
+        display:flex;align-items:center;justify-content:center;
+        position:relative;
+        background-size: cover; /* Добавлено, чтобы изображения заполняли блок */
+    }
+    
     @media (min-width:820px){
       .card{grid-column:span 6}
       .card{grid-template-columns:5fr 7fr}
@@ -163,7 +162,7 @@
       <div class="grid">
 
         <article class="card">
-          <div class="thumb t1"></div>
+          <div class="thumb" style="background-image: url('Exhaust system optimization.jpg');"></div>
           <div class="text">
             <h3 class="title" data-i18n="s1_title">Оптимизация системы выхлопа</h3>
             <p class="desc" data-i18n="s1_desc">Безопасное решение ошибок катализатора и O2‑датчиков. Настройка параметров для стабильной и экономичной работы.</p>
@@ -171,7 +170,7 @@
         </article>
 
         <article class="card">
-          <div class="thumb t2"></div>
+          <div class="thumb" style="background-image: url('AdBlue  SCR system.jpg')"></div>
           <div class="text">
             <h3 class="title" data-i18n="s2_title">Система AdBlue / SCR</h3>
             <p class="desc" data-i18n="s2_desc">Диагностика и калибровка системы впрыска мочевины для снижения расхода и предотвращения ошибок.</p>
@@ -179,7 +178,7 @@
         </article>
 
         <article class="card">
-          <div class="thumb t3"></div>
+          <div class="thumb" style="background-image: url('Stage 1  Stage 2  Stage 3.jpg')"></div>
           <div class="text">
             <h3 class="title" data-i18n="s3_title">Stage 1 / Stage 2 / Stage 3</h3>
             <p class="desc" data-i18n="s3_desc">Программная оптимизация мощности и крутящего момента в рамках безопасных заводских лимитов.</p>
@@ -187,7 +186,7 @@
         </article>
 
         <article class="card">
-          <div class="thumb t4"></div>
+          <div class="thumb" style="background-image: url('Injection and ignition tuning.png')"></div>
           <div class="text">
             <h3 class="title" data-i18n="s4_title">Настройка впрыска и зажигания</h3>
             <p class="desc" data-i18n="s4_desc">Точная регулировка подачи топлива и углов опережения зажигания для максимальной эффективности.</p>
@@ -195,7 +194,7 @@
         </article>
 
         <article class="card">
-          <div class="thumb t5"></div>
+          <div class="thumb" style="background-image: url('Pre and post diagnostics.jpg')"></div>
           <div class="text">
             <h3 class="title" data-i18n="s5_title">Диагностика до и после</h3>
             <p class="desc" data-i18n="s5_desc">Полная проверка параметров двигателя до и после настройки для контроля результата.</p>
@@ -203,14 +202,14 @@
         </article>
 
         <article class="card">
-          <div class="thumb t6"></div>
+          <div class="thumb" style="background-image: url('Turbo and fuel system.png')"></div>
           <div class="text">
             <h3 class="title" data-i18n="s6_title">Турбонаддув и топливная система</h3>
             <p class="desc" data-i18n="s6_desc">Калибровка работы турбины и давления топлива для стабильной тяги и надёжности.</p>
           </div>
         </article>
-
-      </div>
+        
+        </div>
     </div>
   </section>
 
@@ -261,7 +260,7 @@
         services_title:"מגוון פתרונות מלא לצ׳יפ טיונינג בישראל",
         s1_title:"אופטימיזציית מערכת הפליטה",
         s1_desc:"פתרון בטוח לתקלות הקשורות לממיר ולחיישני חמצן. כיוון פרמטרים לעבודה יציבה וחסכונית של המנוע.",
-        s2_title:"מערכת AdBlue / SCR",
+        s2_title:"אוריה", /* ИЗМЕНЕНО: С "מערכת AdBlue / SCR" на "אוריה" */
         s2_desc:"אבחון וכיול מערכת הזרקת אוריאה להפחתת צריכה ולמניעת תקלות.",
         s3_title:"Stage 1 / Stage 2 / Stage 3",
         s3_desc:"אופטימיזציית כוח ומומנט במסגרת גבולות היצרן הבטוחים.",
