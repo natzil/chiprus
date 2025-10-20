@@ -17,12 +17,12 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,Helvetica,sans-serif;
-      /* фон: файл положи в папку "фон" рядом с html */
-      background:var(--bg) center/cover fixed no-repeat url("фон/Flux_Schnell_A_darkcolored_sports_sedan_black_or_dark_grey_wit_2.jpg");
-      color:var(--text);
+   body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,Helvetica,sans-serif;
+    /* фон: файл bg.jpg теперь должен быть в корне репозитория (рядом с index.html) */
+    background:var(--bg) center/cover fixed no-repeat url("bg.jpg"); 
+     color:var(--text);
     }
     /* лёгкий диммер для читабельности */
     body:before{
