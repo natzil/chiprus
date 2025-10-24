@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0b0c" />
-  <title>Chip Tuning IL</title>
+  <title>Professional Chip Tuning & Diagnostics in Israel | Chip Tuning IL</title>
   <style>
     :root{
       --bg:#0b0b0c;
@@ -18,7 +18,7 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,Helvetica,sans-serif;
@@ -89,7 +89,6 @@ body{
       border:1px solid var(--ring);border-radius:14px;overflow:hidden;
       display:grid;grid-template-columns:1fr;min-height:180px
     }
-    /* .card-inner{display:flex;gap:18px;align-items:stretch}  // не используется */
     .card .text{padding:18px 18px 22px;display:flex;flex-direction:column;gap:10px}
     .card .title{font-size:clamp(18px,2.5vw,22px);font-weight:800;margin:0}
     .card .desc{color:var(--muted);margin:0;line-height:1.6}
@@ -108,7 +107,6 @@ body{
       .thumb{order:2;aspect-ratio:auto;min-height:100%}
       [dir="ltr"] .thumb{order:1}
     }
-
 
     /* CONTACTS */
     .contact-grid{display:grid;grid-template-columns:1fr;gap:18px}
@@ -176,6 +174,48 @@ body{
     }
     .feature-card h3{margin:0 0 10px;font-weight:800;color:var(--brand);font-size:clamp(18px,2.4vw,22px)}
     .feature-card p{margin:0;color:var(--text);opacity:.9;line-height:1.65}
+    
+    /* СТИЛИ ДЛЯ ОТЗЫВОВ */
+    .testimonials .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 820px) {
+      .testimonials .grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    .testimonial-card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--ring);
+      border-radius: 16px;
+      padding: 22px 22px 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+    }
+    .testimonial-text {
+      margin: 0 0 16px;
+      color: var(--text);
+      opacity: .95;
+      line-height: 1.65;
+      flex-grow: 1; 
+      font-style: italic;
+    }
+    .testimonial-text::before {
+      content: '“';
+      font-size: 1.5em;
+      color: var(--brand);
+      margin-right: 4px;
+      vertical-align: -0.1em;
+    }
+    .testimonial-author {
+      margin-top: auto;
+      font-weight: 700;
+      color: var(--text);
+      text-align: right;
+    }
 
 </style>
 </head>
@@ -183,7 +223,7 @@ body{
 
   <header class="top">
     <div class="wrap nav">
-      <div class="brand">Professional Chip Tuning & Diagnostics in Israel | Chip Tuning IL </div>
+      <div class="brand">CHIP TUNING • IL</div>
       <button class="menu-btn" aria-label="Menu" title="Menu">☰</button>
 
       <nav class="navlinks">
@@ -208,6 +248,7 @@ body{
       <a class="cta" href="#services" data-i18n="cta">К услугам</a>
     </div>
   </main>
+  
   <section id="features" class="anchor features">
     <div class="wrap">
       <h2 class="section-title" data-i18n="features_title">Наши Преимущества</h2>
@@ -286,6 +327,27 @@ body{
     </div>
   </section>
 
+  <!-- РАЗДЕЛ: ОТЗЫВЫ -->
+  <section id="testimonials" class="anchor testimonials">
+    <div class="wrap">
+      <h2 class="section-title" data-i18n="testimonials_title">Отзывы наших клиентов</h2>
+      <div class="grid">
+        <article class="testimonial-card">
+          <p class="testimonial-text" data-i18n="t1_text">Результат превзошел все ожидания! Машина стала намного отзывчивее, а расход по трассе даже немного упал. Профессиональная работа!</p>
+          <div class="testimonial-author" data-i18n="t1_author">— Давид, Skoda Octavia 1.8TSI</div>
+        </article>
+        <article class="testimonial-card">
+          <p class="testimonial-text" data-i18n="t2_text">Приезжал с ошибками по катализатору, ребята решили проблему быстро и грамотно. Мотор работает ровно, чек не горит. Очень рекомендую!</p>
+          <div class="testimonial-author" data-i18n="t2_author">— Алекс, BMW 320d</div>
+        </article>
+        <article class="testimonial-card">
+          <p class="testimonial-text" data-i18n="t3_text">Сделал Stage 1 — это просто небо и земля. Прибавка в мощности очень чувствуется, особенно на разгоне. Все сделали безопасно, в пределах допусков. Отличный сервис!</p>
+          <div class="testimonial-author" data-i18n="t3_author">— Михаил, VW Golf GTI</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
   <section id="contact" class="anchor">
     <div class="wrap">
       <h2 class="section-title" data-i18n="contact_title">Связаться</h2>
@@ -354,7 +416,15 @@ body{
         f2_title:"גישה אישית",
         f2_desc:"כיוונון לרכב מסוים, לדרישות ולתנאי ההפעלה.",
         f3_title:"אחריות לבטיחות",
-        f3_desc:"עובדים במסגרת תקני היצרן והיתרים טכניים של המנוע והגיר.",
+        f3_desc:"עובדים במסגרת תקני היצרן והיתרים טניים של המנוע והגיר.",
+        // Testimonials strings
+        testimonials_title:"מה הלקוחות שלנו אומרים",
+        t1_text:"התוצאה עלתה על כל הציפיות! הרכב הפך להרבה יותר מגיב, וצריכת הדלק בכביש המהיר אפילו ירדה מעט. עבודה מקצועית!",
+        t1_author:"— דוד, סקודה אוקטביה 1.8TSI",
+        t2_text:"הגעתי עם תקלות בממיר הקטליטי, והחבר'ה פתרו את הבעיה במהירות וביעילות. המנוע עובד חלק, נורית התקלה נעלמה. ממליץ בחום!",
+        t2_author:"— אלכס, ב.מ.וו 320d",
+        t3_text:"עשיתי Stage 1 - זה פשוט שמיים וארץ. תוספת הכוח מורגשת מאוד, במיוחד בתאוצה. הכל נעשה בבטחה, במסגרת המגבלות של היצרן. שירות מעולה!",
+        t3_author:"— מיכאל, פולקסווגן גולף GTI",
         contact_title:"צור קשר",
         contact_lead:"כתבו לנו ב‑WhatsApp או חייגו. עובדים בתיאום מראש.",
         contact_whatsapp:"WhatsApp",
@@ -396,7 +466,14 @@ body{
         f2_desc:"Настройка под конкретный автомобиль, требования и условия эксплуатации.",
         f3_title:"Гарантия Безопасности",
         f3_desc:"Работаем только в пределах технических допусков двигателя и трансмиссии.",
-
+        // Testimonials strings
+        testimonials_title:"Отзывы наших клиентов",
+        t1_text:"Результат превзошел все ожидания! Машина стала намного отзывчивее, а расход по трассе даже немного упал. Профессиональная работа!",
+        t1_author:"— Давид, Skoda Octavia 1.8TSI",
+        t2_text:"Приезжал с ошибками по катализатору, ребята решили проблему быстро и грамотно. Мотор работает ровно, чек не горит. Очень рекомендую!",
+        t2_author:"— Алекс, BMW 320d",
+        t3_text:"Сделал Stage 1 — это просто небо и земля. Прибавка в мощности очень чувствуется, особенно на разгоне. Все сделали безопасно, в пределах допусков. Отличный сервис!",
+        t3_author:"— Михаил, VW Golf GTI",
         contact_title:"Связаться",
         contact_lead:"Напишите в WhatsApp или позвоните. Работаем по записи.",
         contact_whatsapp:"WhatsApp",
@@ -438,7 +515,14 @@ body{
         f2_desc:"Calibration tailored to a specific car, requirements and operating conditions.",
         f3_title:"Safety Guarantee",
         f3_desc:"We work within manufacturer specs and technical tolerances of the engine and transmission.",
-
+        // Testimonials strings
+        testimonials_title:"What Our Clients Say",
+        t1_text:"The result exceeded all expectations! The car became much more responsive, and the fuel consumption on the highway even slightly decreased. Professional work!",
+        t1_author:"— David, Skoda Octavia 1.8TSI",
+        t2_text:"I came with catalyst errors, and the guys solved the problem quickly and efficiently. The engine runs smoothly, the check engine light is gone. Highly recommend!",
+        t2_author:"— Alex, BMW 320d",
+        t3_text:"Stage 1 tuning was a game-changer. The power increase is very noticeable, especially during acceleration. Everything was done safely within the factory limits. Great service!",
+        t3_author:"— Michael, VW Golf GTI",
         contact_title:"Contact",
         contact_lead:"Message us on WhatsApp or call. By appointment.",
         contact_whatsapp:"WhatsApp",
@@ -485,7 +569,7 @@ body{
     setLang('he');
 
     // Google Sheets submit
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzuI9lt0UdPPWKPm6srH41H465xEMCQTlJtvaDXAtNTuwhUm0_VJWRPetV6fY_khB5u/exec';
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4PcEzBf1Nr2jR5pztW8_FPvN4M7I92l4NLJVKahUviXhtpX1AkWTHUcrR_y1kmOiS/exec';
     const gform = document.getElementById('gform');
     if(gform){
       gform.addEventListener('submit', async (e)=>{
