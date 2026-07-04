@@ -22,14 +22,42 @@
 
   async function request(action, payload){
     if (isDemo()) return null;
-    const response = await fetch(sheets().endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, payload: payload || {} })
+    return jsonpRequest(action, payload || {});
+  }
+
+  function jsonpRequest(action, payload){
+    return new Promise((resolve, reject) => {
+      const callback = '__rpgSheetsCb_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      const script = document.createElement('script');
+      const sep = sheets().endpoint.includes('?') ? '&' : '?';
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Google Sheets request timeout'));
+      }, 20000);
+
+      function cleanup(){
+        clearTimeout(timeout);
+        delete window[callback];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[callback] = (data) => {
+        cleanup();
+        if (!data || !data.ok) reject(new Error((data && data.error) || 'Google Sheets backend error'));
+        else resolve(data);
+      };
+
+      script.onerror = () => {
+        cleanup();
+        reject(new Error('Google Sheets script load failed'));
+      };
+      script.src = sheets().endpoint + sep
+        + 'action=' + encodeURIComponent(action)
+        + '&payload=' + encodeURIComponent(JSON.stringify(payload))
+        + '&callback=' + encodeURIComponent(callback)
+        + '&_=' + Date.now();
+      document.head.appendChild(script);
     });
-    const data = await response.json();
-    if (!data.ok) throw new Error(data.error || 'Google Sheets backend error');
-    return data;
   }
 
   function normalizeLoaded(data){
