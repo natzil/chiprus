@@ -1,187 +1,269 @@
-﻿(function(){
+(function(){
   const state = () => window.APP_STATE;
-  const LEVELS = window.LEVELS;
-  const dayKey = (value) => new Date(value).toISOString().slice(0, 10);
-  const todayKey = () => dayKey(new Date());
-  const clamp = (n) => Math.max(0, Math.min(100, Number(n) || 0));
-  const sum = (rows, pick) => rows.reduce((total, row) => total + Number(pick(row) || 0), 0);
-  const esc = (v) => String(v ?? '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const sum = (rows, fn) => (rows || []).reduce((total, row) => total + Number(fn(row) || 0), 0);
+  const clamp = (value) => Math.max(0, Math.min(100, Number(value || 0)));
+  const dayKey = (date) => (date ? new Date(date) : new Date()).toISOString().slice(0, 10);
+  const todayKey = () => new Date().toISOString().slice(0, 10);
 
-  function thresholdFor(level){
-    if (level <= 10) return LEVELS[level - 1] || 0;
-    let t = LEVELS[9];
-    for (let l = 11; l <= level; l++) t += 1200 + 200 * (l - 10);
-    return t;
+  function levelFor(xp){ return Math.max(1, Math.floor(Math.sqrt(Number(xp || 0) / 100)) + 1); }
+  function nextLevelXp(level){ return Math.pow(level, 2) * 100; }
+  function allDoneXp(){ return sum(state().log, row => row.xp); }
+  function trackTasks(trackId){ return state().tasks.filter(task => task.track === trackId); }
+  function branchTasks(branchId){ return state().tasks.filter(task => task.branch === branchId); }
+  function progressForTasks(tasks){
+    const total = sum(tasks, task => task.xp);
+    const done = sum(tasks.filter(task => task.status === 'done'), task => task.xp);
+    return total ? done / total * 100 : 0;
   }
-  function levelFor(xp){ let level = 1; while (thresholdFor(level + 1) <= xp) level++; return level; }
-  function setText(selector, value){ document.querySelectorAll(selector).forEach(el => { el.textContent = value; }); }
-  function renderSegments(el, percent){
-    if (!el) return;
-    el.innerHTML = '';
-    const isMini = el.classList.contains('mini-seg');
-    const n = isMini ? 10 : 14;
-    const filled = Math.round((clamp(percent) / 100) * n);
-    for (let i = 0; i < n; i++) {
-      const s = document.createElement('span');
-      s.className = isMini ? (i < filled ? 'on' : '') : 'seg' + (i < filled ? ' on' : '');
-      el.appendChild(s);
-    }
-  }
-  function renderAllSegments(){ document.querySelectorAll('.seg-bar, .mini-seg').forEach(el => renderSegments(el, el.dataset.percent)); }
+  function trackProgress(trackId){ return progressForTasks(trackTasks(trackId)); }
+  function branchProgress(branchId){ return progressForTasks(branchTasks(branchId)); }
+  function activeTasks(){ return state().tasks.filter(task => task.status !== 'done'); }
+  function recommendedTasks(){ return activeTasks().filter(task => task.status === 'active').slice(0, 3).concat(activeTasks().filter(task => task.status === 'not_started').slice(0, 2)).slice(0, 3); }
 
   function stats(){
-    const xpEvents = state().xpEvents || [];
+    const total = allDoneXp();
     const today = todayKey();
     const weekAgo = Date.now() - 7 * 86400000;
-    const total = sum(xpEvents, e => e.amount);
-    const todayXp = sum(xpEvents.filter(e => dayKey(e.created_at) === today), e => e.amount);
-    const weekXp = sum(xpEvents.filter(e => new Date(e.created_at).getTime() >= weekAgo), e => e.amount);
-    return { total, todayXp, weekXp };
+    return {
+      total,
+      todayXp: sum(state().log.filter(row => dayKey(row.done_at) === today), row => row.xp),
+      weekXp: sum(state().log.filter(row => new Date(row.done_at).getTime() >= weekAgo), row => row.xp),
+      level: levelFor(total)
+    };
   }
 
-  function calculateCurrentStreak(xpEvents){
-    const days = new Set((xpEvents || []).map(e => dayKey(e.created_at)));
+  function setText(selector, text){ document.querySelectorAll(selector).forEach(el => { el.textContent = text; }); }
+
+  function renderSegments(root = document){
+    root.querySelectorAll('.seg-bar,.mini-seg').forEach(el => {
+      const percent = clamp(el.dataset.percent);
+      const count = Number(el.dataset.segments || 12);
+      const on = Math.round(percent / 100 * count);
+      el.innerHTML = Array.from({ length: count }, (_, i) => `<span class="${i < on ? 'on' : ''}"></span>`).join('');
+    });
+  }
+
+  function renderHero(){
+    const s = stats();
+    const next = nextLevelXp(s.level);
+    const prev = nextLevelXp(s.level - 1);
+    const pct = next > prev ? (s.total - prev) / (next - prev) : 0;
+    setText('.js-character-name', state().settings.character_name || 'Оператор');
+    setText('.js-lvl-num', s.level);
+    setText('.js-xp-total', s.total);
+    setText('.js-next-lvl', s.level + 1);
+    setText('.js-xp-to-next', Math.max(0, next - s.total));
+    setText('.js-xp-today', s.todayXp);
+    setText('.js-xp-week', s.weekXp);
+    setText('.js-streak-num', currentStreak());
+    document.querySelectorAll('.js-ring-fg').forEach(circle => {
+      const r = parseFloat(circle.getAttribute('r'));
+      const c = 2 * Math.PI * r;
+      circle.setAttribute('stroke-dasharray', c);
+      circle.setAttribute('stroke-dashoffset', c * (1 - pct));
+    });
+    renderDomainRing();
+  }
+
+  function currentStreak(){
+    const days = new Set(state().log.map(row => dayKey(row.done_at)));
     let cursor = new Date();
     let count = 0;
     if (!days.has(dayKey(cursor))) cursor = new Date(Date.now() - 86400000);
-    while (days.has(dayKey(cursor))) { count++; cursor = new Date(cursor.getTime() - 86400000); }
+    while (days.has(dayKey(cursor))) {
+      count++;
+      cursor = new Date(cursor.getTime() - 86400000);
+    }
     return count;
   }
 
-  function renderCharacter(){
-    const s = stats();
-    const level = levelFor(s.total);
-    const cur = thresholdFor(level), next = thresholdFor(level + 1);
-    const pct = next > cur ? (s.total - cur) / (next - cur) : 0;
-    setText('.js-character-name', state().settings.character_name || 'Оператор');
-    setText('.js-lvl-num', level); setText('.js-xp-total', s.total); setText('.js-next-lvl', level + 1);
-    setText('.js-xp-to-next', Math.max(0, next - s.total)); setText('.js-xp-today', s.todayXp); setText('.js-xp-week', s.weekXp);
-    setText('.js-streak-num', calculateCurrentStreak(state().xpEvents));
-    document.querySelectorAll('.js-ring-fg').forEach(circle => {
-      const r = parseFloat(circle.getAttribute('r')); const c = 2 * Math.PI * r;
-      circle.setAttribute('stroke-dasharray', c); circle.setAttribute('stroke-dashoffset', c * (1 - pct));
-    });
-    renderMobileDomainRing();
-  }
-
-  function renderQuests(){
-    const active = (state().quests || []).filter(q => q.status === 'active').slice(0, 8);
-    const desktop = document.getElementById('desktop-quest-list');
-    const mobile = document.getElementById('mobile-quest-list');
-    if (desktop) desktop.innerHTML = active.map(q => `<div class="quest ${q.type === 'project_task' ? 'project-type' : q.type === 'review' ? 'review-type' : ''}" data-quest-id="${esc(q.id)}"><span class="prompt">&gt;</span><div class="quest-body"><div class="quest-title">${esc(q.title)}</div><div class="quest-meta">${esc(q.description || q.area || '')}</div></div><div class="quest-xp">+${Number(q.xp || 0)} XP</div><button class="quest-btn" data-complete-quest="${esc(q.id)}">Выполнить</button></div>`).join('') || '<div class="archive-item">Активных квестов нет.</div>';
-    if (mobile) mobile.innerHTML = active.map(q => `<div class="m-quest-card ${q.type === 'project_task' ? 'project-type' : q.type === 'review' ? 'review-type' : ''}" data-quest-id="${esc(q.id)}"><div class="m-quest-top"><span class="m-quest-badge">${esc(q.area || q.branch || 'quest')}</span><span class="m-quest-xp">+${Number(q.xp || 0)} XP</span></div><div class="m-quest-title">${esc(q.title)}</div><div class="m-quest-meta">${esc(q.description || '')}</div><button class="m-quest-action" data-complete-quest="${esc(q.id)}">Выполнить →</button></div>`).join('') || '<div class="archive-item">Активных квестов нет.</div>';
-  }
-
-  function projectXp(project){ return sum((state().projectTasks || []).filter(t => t.project_id === project.id && t.status === 'done'), t => t.xp); }
-  function nextLesson(){ return (state().courseLessons || []).find(l => l.status !== 'done'); }
-  function activeProjectTasks(projectId){ return (state().projectTasks || []).filter(t => t.project_id === projectId && t.status === 'active'); }
-  function renderNextAction(){
-    const quest = (state().quests || []).find(q => q.status === 'active');
-    const lesson = nextLesson();
-    const task = (state().projectTasks || []).find(t => t.status === 'active');
-    const desktop = document.getElementById('next-action-panel');
-    const mobile = document.getElementById('mobile-next-action-panel');
-    const html = `<div class="next-panel"><div><span class="label">следующий ход</span><div class="next-title">${esc(quest ? quest.title : lesson ? lesson.title : task ? task.title : 'Свободный слот')}</div><div class="next-meta">${esc(quest ? (quest.description || 'закрыть квест') : lesson ? 'CCNA lesson · +40 XP' : task ? 'project task · +' + Number(task.xp || 0) + ' XP' : 'Добавь новый quest или English activity')}</div></div><div class="next-actions">${quest ? `<button class="primary-btn compact" data-complete-quest="${esc(quest.id)}">Quest Done</button>` : ''}${lesson ? `<button class="mini-btn" data-complete-lesson="${esc(lesson.id)}">CCNA Done</button>` : ''}${task ? `<button class="mini-btn" data-complete-task="${esc(task.id)}">Task Done</button>` : ''}</div></div>`;
-    if (desktop) desktop.innerHTML = html;
-    if (mobile) mobile.innerHTML = html;
-  }
-  function renderProjects(){
-    const projects = state().projects || [];
-    const active = projects.filter(p => p.status === 'active');
-    const paused = projects.filter(p => p.status === 'paused');
-    const completed = projects.filter(p => p.status === 'completed');
-    const taskRows = p => {
-      const tasks = activeProjectTasks(p.id).slice(0, 3);
-      if (!tasks.length) return '<div class="task-empty">Нет активных задач. Добавь task через Admin.</div>';
-      return tasks.map(t => `<div class="task-row"><div><b>${esc(t.title)}</b><span>${esc(t.description || 'следующий шаг')}</span></div><em>+${Number(t.xp || 0)} XP</em><button class="mini-btn" data-complete-task="${esc(t.id)}">Done</button></div>`).join('');
-    };
-    const card = p => { const current = projectXp(p); const pct = p.target_xp ? current / p.target_xp * 100 : 0; return `<div class="project-card"><div class="project-top"><div><div class="project-name">${esc(p.name)}</div><div class="project-tags">важность: ${esc(p.importance)} · сложность: ${esc(p.difficulty)}</div></div><div class="project-xp">${current} / ${Number(p.target_xp || 0)} XP</div></div><div class="seg-bar" style="--seg-color:#c9895b" data-percent="${pct}"></div><div class="project-stage">этап: <b>${esc(p.current_stage || 'следующий шаг')}</b></div><div class="task-list">${taskRows(p)}</div></div>`; };
-    const chip = p => { const current = projectXp(p); const pct = p.target_xp ? current / p.target_xp * 100 : 0; const task = activeProjectTasks(p.id)[0]; return `<div class="m-project-chip"><div class="name">${esc(p.name)}</div><div class="seg-bar" style="--seg-color:#c9895b" data-percent="${pct}"></div><div class="meta">${current}/${Number(p.target_xp || 0)} XP · ${esc(p.current_stage || '')}</div>${task ? `<button class="m-task-done" data-complete-task="${esc(task.id)}">${esc(task.title)} · Done</button>` : '<div class="meta">Нет активных задач</div>'}</div>`; };
-    const desktop = document.getElementById('desktop-project-list'); const mobile = document.getElementById('mobile-project-list');
-    if (desktop) desktop.innerHTML = active.map(card).join('') || '<div class="archive-item">Активных проектов нет.</div>';
-    if (mobile) mobile.innerHTML = active.map(chip).join('') || '<div class="archive-item">Активных проектов нет.</div>';
-    const archive = `<details><summary>Проекты на паузе (${paused.length}) <span class="chev">›</span></summary>${paused.map(p => `<div class="archive-item"><b>${esc(p.name)}</b> — ${projectXp(p)}/${Number(p.target_xp || 0)} XP</div>`).join('') || '<div class="archive-item">Пусто</div>'}</details><details><summary>Завершённое (${completed.length}) <span class="chev">›</span></summary>${completed.map(p => `<div class="archive-item"><b>${esc(p.name)}</b> — получено ${projectXp(p)} XP</div>`).join('') || '<div class="archive-item">Пусто</div>'}</details>`;
-    const da = document.getElementById('desktop-project-archive'); const ma = document.getElementById('m-sec-archive'); if (da) da.innerHTML = archive; if (ma) ma.innerHTML = archive;
-  }
-
-  function renderAreas(){
-    const summary = domainProgress();
-    const areas = [
-      { name:'Обучение', level:'Lv.' + levelFor(stats().total), accent:'#6ee7da', pct:summary.learning, subs:[['CCNA', summary.ccna], ['English', summary.english], ['Linux', 0]] },
-      { name:'Хобби', level:'0%', accent:'#c9895b', pct:summary.hobby, subs:[['NAS', projectPercent('NAS')], ['Лаборатория', 0]] },
-      { name:'Здоровье', level:'week', accent:'#8ccf7e', pct:summary.health, subs:[['Бассейн', 0], ['Ходьба', 0], ['Сон', 0]] },
-      { name:'Бизнес', level:'plan', accent:'#d7b56d', pct:summary.business, subs:[['Клиенты', 0], ['Контент', 0], ['Финансы', 0]] }
-    ];
-    const desktop = document.getElementById('desktop-area-list'); const mobile = document.getElementById('mobile-area-list');
-    if (desktop) desktop.innerHTML = areas.map(a => `<div class="area-card" style="--accent:${a.accent}"><div class="area-top"><div class="area-title">${esc(a.name)}</div><div class="area-lvl">${esc(a.level)}</div></div><div class="seg-bar" style="--seg-color:${a.accent}" data-percent="${a.pct}"></div><div class="subskills">${a.subs.map(([n,p]) => `<div class="subskill-row"><span class="name">${esc(n)}</span><span class="mini-seg" style="--seg-color:${a.accent}" data-percent="${p}"></span><span class="pct">${Math.round(p)}%</span></div>`).join('')}</div></div>`).join('');
-    if (mobile) mobile.innerHTML = areas.map(a => `<div class="m-area-chip" style="--accent:${a.accent}"><div class="m-area-top"><span class="name">${esc(a.name)}</span><span class="lvl">${esc(a.level)}</span></div><div class="seg-bar" style="--seg-color:${a.accent}" data-percent="${a.pct}"></div>${a.subs.slice(0,2).map(([n,p]) => `<div class="subrow"><span class="name">${esc(n)}</span><span class="mini-seg" style="--seg-color:${a.accent}" data-percent="${p}"></span></div>`).join('')}</div>`).join('');
-  }
-
-  function domainProgress(){
-    const lessons = state().courseLessons || [];
-    const done = lessons.filter(l => l.status === 'done').length;
-    const ccna = lessons.length ? done / lessons.length * 100 : 0;
-    const english = englishStats().percent;
-    const hobbyProjects = (state().projects || []).filter(p => p.status === 'active' && (p.area === 'hobby' || p.name.includes('NAS')));
-    const hobbyDone = sum(hobbyProjects, p => projectXp(p));
-    const hobbyTarget = sum(hobbyProjects, p => p.target_xp);
-    const hobby = hobbyTarget ? hobbyDone / hobbyTarget * 100 : 0;
-    return { learning:(ccna + english) / 2, ccna, english, hobby, health:0, business:0 };
-  }
-  function renderMobileDomainRing(){
-    const values = domainProgress();
+  function renderDomainRing(){
+    const values = { learning:branchProgress('learning'), projects:branchProgress('projects'), health:branchProgress('health'), work:branchProgress('work') };
+    const map = { learning:'learning', hobby:'projects', health:'health', business:'work' };
     const order = ['learning', 'hobby', 'health', 'business'];
     document.querySelectorAll('.m-domain-ring circle').forEach(circle => {
-      const r = parseFloat(circle.getAttribute('r')); const c = 2 * Math.PI * r;
+      const r = parseFloat(circle.getAttribute('r'));
+      const c = 2 * Math.PI * r;
       const seg = c / 4 - 12;
       const domain = circle.dataset.domain || (circle.classList.contains('domain-learn') ? 'learning' : circle.classList.contains('domain-hobby') ? 'hobby' : circle.classList.contains('domain-health') ? 'health' : 'business');
       const i = order.indexOf(domain);
-      const filled = circle.classList.contains('domain-seg') ? seg * clamp(values[domain] || 0) / 100 : seg;
+      const pct = values[map[domain]] || 0;
+      const filled = circle.classList.contains('domain-seg') ? seg * clamp(pct) / 100 : seg;
       circle.setAttribute('stroke-dasharray', `${filled} ${c - filled}`);
       circle.setAttribute('stroke-dashoffset', String(-(i * c / 4 + 6)));
     });
   }
 
-  function projectPercent(fragment){ const p = (state().projects || []).find(x => x.name.includes(fragment)); return p && p.target_xp ? projectXp(p) / p.target_xp * 100 : 0; }
-  function englishStats(){
-    const rows = state().englishActivities || []; const targetHours = Number(state().settings.english_target_hours || 300);
-    const totalMinutes = sum(rows, r => r.minutes); const totals = { listening:0, speaking:0, reading:0, tutor:0, vocabulary:0 };
-    rows.forEach(r => (r.skills || []).forEach(skill => { if (skill in totals) totals[skill] += Number(r.minutes || 0); }));
-    return { hours: totalMinutes / 60, percent: targetHours ? totalMinutes / 60 / targetHours * 100 : 0, targetHours, totals };
-  }
-  function renderEnglishProgress(){
-    const e = englishStats(); setText('.js-english-hours', e.hours.toFixed(1));
-    const rows = [['English total', e.percent], ['Listening', e.totals.listening / 60 / e.targetHours * 100], ['Speaking', e.totals.speaking / 60 / e.targetHours * 100], ['Reading', e.totals.reading / 60 / e.targetHours * 100], ['Tutor', e.totals.tutor / 60 / e.targetHours * 100], ['Vocabulary', e.totals.vocabulary / 60 / e.targetHours * 100]];
-    const html = `<div class="area-title">English B2</div><div class="project-stage"><b>${e.hours.toFixed(1)}</b> / ${e.targetHours} clean hours</div>${rows.map(([n,p]) => `<div class="english-row"><span class="name">${esc(n)}</span><span class="mini-seg" data-percent="${p}"></span><span class="pct">${Math.round(clamp(p))}%</span></div>`).join('')}<div class="quick-actions mobile-english-actions"><button class="mini-btn" data-quick-english="15">+15m</button><button class="mini-btn" data-quick-english="30">+30m Tutor</button><button class="mini-btn" data-open-modal="admin-modal" data-admin-open-tab="english">Изменить</button></div>`;
-    const panel = document.getElementById('english-progress-panel');
-    const mobile = document.getElementById('mobile-english-progress-panel');
-    if (panel) { panel.className = 'english-panel'; panel.innerHTML = html; }
-    if (mobile) { mobile.className = 'english-panel m-english-panel'; mobile.innerHTML = html; }
-  }
-
-  function renderCcnaProgress(){
-    const done = (state().courseLessons || []).filter(l => l.status === 'done').length; setText('.js-ccna-done', done);
-    const list = document.getElementById('ccna-lessons-list'); if (!list) return;
-    const html = (state().courseLessons || []).map(l => `<div class="lesson-row"><span>${l.status === 'done' ? 'DONE' : 'TODO'}</span><b>${esc(l.day_number)}.</b><span>${esc(l.title)}</span><button class="mini-btn" data-complete-lesson="${esc(l.id)}" ${l.status === 'done' ? 'disabled' : ''}>Done</button></div>`).join('');
-    list.innerHTML = html;
-    const mobileList = document.getElementById('mobile-ccna-lessons-list');
-    if (mobileList) mobileList.innerHTML = html;
+  function renderOverview(){
+    const tracks = ['ccna','english','linux','nas','chiptuning','pool'];
+    const recommended = recommendedTasks();
+    return `
+      <section class="next-panel">
+        <div>
+          <span class="label">следующий ход</span>
+          <div class="next-title">${esc(recommended[0]?.title || 'Свободный слот')}</div>
+          <div class="next-meta">${esc(recommended[0]?.description || 'Выбери ветку и добавь действие')}</div>
+        </div>
+        <div class="next-actions">${recommended.map(task => `<button class="mini-btn" data-done-task="${esc(task.id)}">Выполнить</button>`).join('')}</div>
+      </section>
+      <section class="focus-grid">
+        ${tracks.map(trackId => trackCard(trackId, true)).join('')}
+      </section>
+      <div class="section-head"><h2>Быстрые действия</h2></div>
+      <section class="quick-action-grid">
+        ${recommended.map(task => quickTaskCard(task)).join('')}
+      </section>
+    `;
   }
 
-  function renderAdminState(){
-    const demo = !!state().demoMode;
-    document.querySelectorAll('.admin-only').forEach(el => { el.style.display = ''; });
-    const html = `<span class="email">${demo ? 'demo/offline mode' : 'Google Sheets live'}</span>`;
-    const auth = document.getElementById('auth-panel'); const mobile = document.getElementById('mobile-auth-panel'); if (auth) auth.innerHTML = html; if (mobile) mobile.innerHTML = `<div class="auth-panel">${html}</div>`;
-    const panel = document.getElementById('admin-panel'); if (panel) panel.innerHTML = `<div class="area-title">Admin</div><div class="project-stage">${demo ? 'Demo/offline mode: изменения локальные.' : 'Google Sheets backend: изменения сохраняются в таблицу.'}</div><div class="quick-actions"><button class="mini-btn" data-quick-english="15">+15m English</button><button class="mini-btn" data-quick-english="30">+30m Tutor</button><button class="mini-btn" data-open-modal="admin-modal">+ Full add</button></div>`;
-    const select = document.getElementById('project-task-project'); if (select) select.innerHTML = (state().projects || []).map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  function trackCard(trackId, compact = false){
+    const track = state().tracks.find(row => row.id === trackId);
+    if (!track) return '';
+    const tasks = trackTasks(track.id);
+    const done = tasks.filter(task => task.status === 'done').length;
+    const pct = trackProgress(track.id);
+    return `
+      <button class="track-card ${compact ? 'compact' : ''}" data-view-track="${esc(track.id)}" style="--accent:${branchAccent(track.branch)}">
+        <span class="track-top"><b>${esc(track.title)}</b><em>${Math.round(clamp(pct))}%</em></span>
+        <span class="seg-bar" style="--seg-color:${branchAccent(track.branch)}" data-percent="${pct}"></span>
+        <span class="track-meta">${done}/${tasks.length} задач · ${sum(tasks.filter(t => t.status === 'done'), t => t.xp)}/${sum(tasks, t => t.xp)} XP</span>
+      </button>
+    `;
   }
 
-  function showToast(message){ const layer = document.getElementById('toast-layer'); if (!layer) return; const t = document.createElement('div'); t.className = 'toast'; t.textContent = message; layer.appendChild(t); setTimeout(() => t.remove(), 3000); }
-  function showError(message){ const layer = document.getElementById('toast-layer'); if (!layer) return; const t = document.createElement('div'); t.className = 'toast error'; t.textContent = message || 'Ошибка'; layer.appendChild(t); setTimeout(() => t.remove(), 4200); }
+  function quickTaskCard(task){
+    return `
+      <article class="m-quest-card ${task.branch === 'projects' ? 'project-type' : ''}">
+        <div class="m-quest-top"><span class="m-quest-badge">${esc(trackTitle(task.track))}</span><span class="m-quest-xp">+${Number(task.xp || 0)} XP</span></div>
+        <div class="m-quest-title">${esc(task.title)}</div>
+        <div class="m-quest-meta">${esc(task.description || '')}</div>
+        <button class="m-quest-action" data-done-task="${esc(task.id)}">Выполнить →</button>
+      </article>
+    `;
+  }
+
+  function renderBranches(){
+    return `
+      <section class="branch-grid">
+        ${state().branches.map(branch => {
+          const pct = branchProgress(branch.id);
+          const tasks = branchTasks(branch.id);
+          return `
+            <button class="branch-card" data-view-branch="${esc(branch.id)}" style="--accent:${branch.accent}">
+              <span class="branch-head"><b>${esc(branch.title)}</b><em>Lv.${levelFor(sum(tasks.filter(t => t.status === 'done'), t => t.xp))}</em></span>
+              <span class="branch-percent">${Math.round(clamp(pct))}%</span>
+              <span class="seg-bar" style="--seg-color:${branch.accent}" data-percent="${pct}"></span>
+              <span class="branch-meta">${tasks.filter(t => t.status === 'done').length}/${tasks.length} сделано</span>
+            </button>
+          `;
+        }).join('')}
+      </section>
+    `;
+  }
+
+  function renderBranch(branchId){
+    const branch = state().branches.find(row => row.id === branchId) || state().branches[0];
+    const tasks = branchTasks(branch.id).filter(task => task.status !== 'done').slice(0, 6);
+    return `
+      <div class="view-head"><button class="mini-btn" data-view="branches">← Ветки</button><h2>${esc(branch.title)}</h2></div>
+      <section class="focus-grid">${branch.tracks.map(trackCard).join('')}</section>
+      <div class="section-head"><h2>Активные задачи</h2></div>
+      <section>${tasks.map(taskRow).join('') || '<div class="archive-item">Активных задач нет.</div>'}</section>
+    `;
+  }
+
+  function renderTrack(trackId){
+    const track = state().tracks.find(row => row.id === trackId) || state().tracks[0];
+    const tasks = trackTasks(track.id);
+    return `
+      <div class="view-head"><button class="mini-btn" data-view-branch="${esc(track.branch)}">← ${esc(branchTitle(track.branch))}</button><h2>${esc(track.title)}</h2></div>
+      <section class="track-summary" style="--accent:${branchAccent(track.branch)}">
+        <b>${Math.round(clamp(trackProgress(track.id)))}%</b>
+        <span class="seg-bar" style="--seg-color:${branchAccent(track.branch)}" data-percent="${trackProgress(track.id)}"></span>
+        <em>${tasks.filter(t => t.status === 'done').length}/${tasks.length} задач</em>
+      </section>
+      <section class="task-list-deep">${tasks.map(taskRow).join('')}</section>
+    `;
+  }
+
+  function taskRow(task){
+    const statusText = task.status === 'done' ? 'сделано' : task.status === 'active' ? 'в процессе' : 'не начато';
+    return `
+      <article class="task-deep ${task.status}">
+        <div class="task-deep-top">
+          <span class="m-quest-badge">${esc(statusText)}</span>
+          <span class="m-quest-xp">+${Number(task.xp || 0)} XP</span>
+        </div>
+        <h3>${esc(task.title)}</h3>
+        <p>${esc(task.description || '')}</p>
+        <div class="seg-bar" style="--seg-color:${branchAccent(task.branch)}" data-percent="${task.status === 'done' ? 100 : Number(task.progress || 0)}"></div>
+        <div class="task-actions">
+          ${task.status !== 'done' ? `<button class="mini-btn" data-start-task="${esc(task.id)}">В процессе</button><button class="primary-btn compact" data-done-task="${esc(task.id)}">Сделано</button>` : '<span class="project-stage">осталось в истории</span>'}
+        </div>
+      </article>
+    `;
+  }
+
+  function renderLog(){
+    return `
+      <section class="sync-panel">
+        <div><b>${state().sync.status === 'synced' ? 'Google Sheets synced' : 'Local-first mode'}</b><span>${esc(state().sync.last_synced_at || state().sync.last_error || 'Сайт работает даже без таблицы')}</span></div>
+        <button class="mini-btn" data-sync-now>Sync</button>
+        <button class="mini-btn" data-undo-last>Undo</button>
+      </section>
+      <div class="section-head"><h2>Лог выполненного</h2></div>
+      <section class="log-list">${state().log.slice(0, 80).map(row => `<div class="log-row"><b>+${Number(row.xp || 0)} XP</b><span>${esc(row.title)}</span><em>${dayKey(row.done_at)}</em></div>`).join('') || '<div class="archive-item">Пока пусто.</div>'}</section>
+    `;
+  }
+
+  function renderDesktopMirror(){
+    const area = document.getElementById('desktop-area-list');
+    if (area) area.innerHTML = state().branches.map(branch => {
+      const pct = branchProgress(branch.id);
+      return `<div class="area-card" style="--accent:${branch.accent}"><div class="area-top"><div class="area-title">${esc(branch.title)}</div><div class="area-lvl"><b>${Math.round(clamp(pct))}%</b><span>Lv.${levelFor(sum(branchTasks(branch.id).filter(t => t.status === 'done'), t => t.xp))}</span></div></div><div class="seg-bar" style="--seg-color:${branch.accent}" data-percent="${pct}"></div><div class="subskills">${branch.tracks.map(trackId => `<div class="subskill-row"><span class="name">${esc(trackTitle(trackId))}</span><span class="mini-seg" style="--seg-color:${branch.accent}" data-percent="${trackProgress(trackId)}"></span><span class="pct">${Math.round(clamp(trackProgress(trackId)))}%</span></div>`).join('')}</div></div>`;
+    }).join('');
+    const desktopQuest = document.getElementById('desktop-quest-list');
+    if (desktopQuest) desktopQuest.innerHTML = recommendedTasks().map(task => quickTaskCard(task)).join('');
+    const desktopProjects = document.getElementById('desktop-project-list');
+    if (desktopProjects) desktopProjects.innerHTML = state().tracks.filter(t => t.branch === 'projects').map(t => trackCard(t.id)).join('');
+    const english = document.getElementById('english-progress-panel');
+    if (english) english.innerHTML = trackCard('english');
+    const admin = document.getElementById('admin-panel');
+    if (admin) admin.innerHTML = `<div class="area-title">Settings / sync</div><div class="project-stage">${state().sync.status}: ${esc(state().sync.last_error || state().sync.last_synced_at || 'local')}</div><div class="quick-actions"><button class="mini-btn" data-sync-now>Sync</button><button class="mini-btn" data-undo-last>Undo</button><button class="mini-btn" data-open-modal="admin-modal">+ Task</button></div>`;
+  }
+
+  function branchAccent(branchId){ return (state().branches.find(row => row.id === branchId) || {}).accent || '#6ee7da'; }
+  function branchTitle(branchId){ return (state().branches.find(row => row.id === branchId) || {}).title || branchId; }
+  function trackTitle(trackId){ return (state().tracks.find(row => row.id === trackId) || {}).title || trackId; }
+
+  function renderDashboard(){
+    renderHero();
+    const root = document.getElementById('app-view');
+    const view = state().view || 'overview';
+    if (root) {
+      root.innerHTML = view === 'overview' ? renderOverview()
+        : view === 'branches' ? renderBranches()
+        : view === 'branch' ? renderBranch(state().selectedBranch || 'learning')
+        : view === 'track' ? renderTrack(state().selectedTrack || 'ccna')
+        : renderLog();
+    }
+    renderDesktopMirror();
+    renderSegments();
+  }
+
+  function showToast(message){
+    const layer = document.getElementById('toast-layer');
+    if (!layer) return;
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = message;
+    layer.appendChild(t);
+    setTimeout(() => t.remove(), 2600);
+  }
+  function showError(message){ console.warn(message); }
   function openModal(modalId){ const el = document.getElementById(modalId); if (el) { el.classList.add('open'); el.setAttribute('aria-hidden','false'); } }
   function closeModal(modalId){ const el = document.getElementById(modalId); if (el) { el.classList.remove('open'); el.setAttribute('aria-hidden','true'); } }
-  function renderDashboard(){ renderCharacter(); renderNextAction(); renderQuests(); renderProjects(); renderAreas(); renderEnglishProgress(); renderCcnaProgress(); renderAdminState(); renderAllSegments(); }
 
-  Object.assign(window, { thresholdFor, levelFor, setText, renderSegments, renderAllSegments, renderCharacter, renderDashboard, renderQuests, renderProjects, renderAreas, renderEnglishProgress, renderCcnaProgress, renderAdminState, showToast, showError, openModal, closeModal, calculateCurrentStreak });
+  Object.assign(window, { renderDashboard, renderSegments, showToast, showError, openModal, closeModal, levelFor });
 })();

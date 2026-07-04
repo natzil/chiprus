@@ -1,55 +1,86 @@
 (function(){
-  const state = window.APP_STATE;
-  const sheets = () => window.APP_SHEETS || { demoMode: true, endpoint: '' };
-  const isDemo = () => sheets().demoMode || !sheets().endpoint;
-  const nowIso = () => new Date().toISOString();
-  const today = () => new Date().toISOString().slice(0, 10);
-  const uid = (prefix) => prefix + '-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  const STORAGE_KEY = 'rpg-dashboard-state-v3';
+  const state = () => window.APP_STATE;
+  const sheets = () => window.APP_SHEETS || { demoMode:true, endpoint:'' };
   const clone = (value) => JSON.parse(JSON.stringify(value));
+  const uid = (prefix) => prefix + '-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  const nowIso = () => new Date().toISOString();
 
-  function pushXp(amount, area, sourceType, sourceId, note){
-    if (state.xpEvents.some(e => e.source_type === sourceType && e.source_id === sourceId)) return;
-    state.xpEvents.unshift({
-      id: uid('xp'),
-      amount: Number(amount || 0),
-      area,
-      source_type: sourceType,
-      source_id: sourceId,
-      note: note || '',
-      created_at: nowIso()
+  function mergeDefaults(saved){
+    const base = clone(window.RPG_DEFAULT_STATE);
+    if (!saved || typeof saved !== 'object') return base;
+    const byId = (rows) => new Map((rows || []).map(row => [row.id, row]));
+    const savedTasks = byId(saved.tasks);
+    base.tasks = base.tasks.map(task => Object.assign(task, savedTasks.get(task.id) || {}));
+    (saved.tasks || []).forEach(task => { if (!base.tasks.some(row => row.id === task.id)) base.tasks.push(task); });
+    return Object.assign(base, saved, {
+      settings: Object.assign(base.settings, saved.settings || {}),
+      branches: base.branches,
+      tracks: base.tracks,
+      tasks: base.tasks,
+      log: saved.log || base.log,
+      undoStack: saved.undoStack || [],
+      sync: Object.assign(base.sync, saved.sync || {})
     });
   }
 
-  async function request(action, payload){
-    if (isDemo()) return null;
-    return jsonpRequest(action, payload || {});
+  function saveLocal(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state()));
+    syncSoon();
+  }
+
+  function loadLocal(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
+    Object.assign(state(), mergeDefaults(saved));
+  }
+
+  let syncTimer = null;
+  function syncSoon(){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncNow, 600);
+  }
+
+  async function syncNow(){
+    if (!state().settings.sync_enabled || sheets().demoMode || !sheets().endpoint) return false;
+    try {
+      await jsonpRequest('sync', { state: clone(state()) });
+      state().sync.status = 'synced';
+      state().sync.last_synced_at = nowIso();
+      state().sync.last_error = '';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state()));
+      return true;
+    } catch (error) {
+      console.warn('[sync]', error);
+      state().sync.status = 'offline';
+      state().sync.last_error = error.message || String(error);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state()));
+      return false;
+    }
   }
 
   function jsonpRequest(action, payload){
     return new Promise((resolve, reject) => {
-      const callback = '__rpgSheetsCb_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+      const callback = '__rpgSyncCb_' + Date.now() + '_' + Math.random().toString(16).slice(2);
       const script = document.createElement('script');
       const sep = sheets().endpoint.includes('?') ? '&' : '?';
       const timeout = setTimeout(() => {
         cleanup();
-        reject(new Error('Google Sheets request timeout'));
-      }, 20000);
-
+        reject(new Error('Google Sheets sync timeout'));
+      }, 12000);
       function cleanup(){
         clearTimeout(timeout);
         delete window[callback];
         if (script.parentNode) script.parentNode.removeChild(script);
       }
-
       window[callback] = (data) => {
         cleanup();
-        if (!data || !data.ok) reject(new Error((data && data.error) || 'Google Sheets backend error'));
+        if (!data || !data.ok) reject(new Error((data && data.error) || 'Google Sheets sync error'));
         else resolve(data);
       };
-
       script.onerror = () => {
         cleanup();
-        reject(new Error('Google Sheets script load failed'));
+        reject(new Error('Google Sheets unavailable'));
       };
       script.src = sheets().endpoint + sep
         + 'action=' + encodeURIComponent(action)
@@ -60,204 +91,120 @@
     });
   }
 
-  function normalizeLoaded(data){
-    const settings = clone(state.settings);
-    (data.settings || data.app_settings || []).forEach(row => { settings[row.key] = row.value; });
-    const normalizeSkills = (rows) => (rows || []).map(row => ({
-      ...row,
-      skills: Array.isArray(row.skills) ? row.skills : safeJson(row.skills, [])
-    }));
-    Object.assign(state, {
-      demoMode: false,
-      settings,
-      quests: data.quests || [],
-      projects: data.projects || [],
-      projectTasks: data.projectTasks || data.project_tasks || [],
-      courseLessons: data.courseLessons || data.ccnaLessons || data.ccna_lessons || [],
-      ccnaLessons: data.ccnaLessons || data.ccna_lessons || data.courseLessons || [],
-      englishActivities: normalizeSkills(data.englishActivities || data.english_activities || []),
-      xpEvents: data.xpEvents || data.xp_events || [],
-      chipAreas: data.chipAreas || data.chip_areas || state.chipAreas || [],
-      chipTasks: data.chipTasks || data.chip_tasks || state.chipTasks || [],
-      habits: data.habits || state.habits || [],
-      habitEvents: data.habitEvents || data.habit_events || state.habitEvents || []
-    });
-  }
-
-  function safeJson(value, fallback){
-    try {
-      if (!value) return fallback;
-      return JSON.parse(value);
-    } catch (_error) {
-      return fallback;
-    }
-  }
-
   async function loadDashboardData(){
     try {
-      if (isDemo()) {
-        state.demoMode = true;
-        return state;
-      }
-      const data = await request('load');
-      normalizeLoaded(data.data || {});
-      console.info('[dashboard] google sheets live', {
-        quests: state.quests.length,
-        ccnaLessons: state.courseLessons.length,
-        projects: state.projects.length,
-        xpEvents: state.xpEvents.length
-      });
-      return state;
+      loadLocal();
+      state().demoMode = sheets().demoMode || !sheets().endpoint;
+      syncSoon();
+      return state();
     } catch (error) {
       console.error(error);
-      state.demoMode = true;
-      window.showError && window.showError(error.message);
-      return state;
+      Object.assign(state(), mergeDefaults(null));
+      return state();
     }
   }
 
-  async function completeQuest(questId){
-    try {
-      const quest = state.quests.find(q => q.id == questId);
-      if (!quest || quest.status === 'done') return false;
-      if (isDemo()) {
-        quest.status = 'done';
-        quest.completed_at = nowIso();
-        pushXp(quest.xp, quest.area, 'quest', quest.id, quest.title);
-        return true;
-      }
-      await request('completeQuest', { id: questId });
-      return true;
-    } catch (error) { window.showError(error.message); return false; }
+  function completeTask(taskId){
+    const task = state().tasks.find(row => row.id === taskId);
+    if (!task || task.status === 'done') return false;
+    const before = clone(task);
+    task.status = 'done';
+    task.progress = 100;
+    task.completed_at = nowIso();
+    const log = {
+      id: uid('log'),
+      task_id: task.id,
+      title: task.title,
+      branch: task.branch,
+      track: task.track,
+      xp: Number(task.xp || 0),
+      done_at: task.completed_at
+    };
+    state().log.unshift(log);
+    state().undoStack.unshift({ type:'completeTask', task_id:task.id, before, log_id:log.id });
+    state().undoStack = state().undoStack.slice(0, 10);
+    saveLocal();
+    return true;
   }
 
-  async function completeLesson(lessonId){
-    try {
-      const lesson = (state.courseLessons || state.ccnaLessons || []).find(l => l.id == lessonId);
-      if (!lesson || lesson.status === 'done') return false;
-      if (isDemo()) {
-        lesson.status = 'done';
-        lesson.completed_at = nowIso();
-        pushXp(lesson.xp, 'CCNA', 'ccna_lesson', lesson.id, lesson.title);
-        return true;
-      }
-      await request('completeLesson', { id: lessonId });
-      return true;
-    } catch (error) { window.showError(error.message); return false; }
+  function setTaskStatus(taskId, status){
+    const task = state().tasks.find(row => row.id === taskId);
+    if (!task) return false;
+    const before = clone(task);
+    task.status = status;
+    task.progress = status === 'done' ? 100 : status === 'active' ? Math.max(Number(task.progress || 0), 10) : 0;
+    if (status !== 'done') task.completed_at = '';
+    state().undoStack.unshift({ type:'status', task_id:task.id, before });
+    saveLocal();
+    return true;
   }
 
-  async function completeProjectTask(taskId){
-    try {
-      const task = state.projectTasks.find(t => t.id == taskId);
-      if (!task || task.status === 'done') return false;
-      const project = state.projects.find(p => p.id == task.project_id);
-      if (isDemo()) {
-        task.status = 'done';
-        task.completed_at = nowIso();
-        pushXp(task.xp, project ? project.name : 'Project', 'project_task', task.id, task.title);
-        return true;
-      }
-      await request('completeProjectTask', { id: taskId });
-      return true;
-    } catch (error) { window.showError(error.message); return false; }
+  function addTask(payload){
+    const task = {
+      id: payload.id || uid('task'),
+      branch: payload.branch || 'learning',
+      track: payload.track || payload.branch || 'custom',
+      title: payload.title,
+      description: payload.description || '',
+      xp: Number(payload.xp || 10),
+      status: payload.status || 'active',
+      progress: Number(payload.progress || 0),
+      due_date: payload.due_date || ''
+    };
+    state().tasks.unshift(task);
+    state().undoStack.unshift({ type:'addTask', task_id:task.id });
+    saveLocal();
+    return task;
   }
 
-  async function addQuest(payload){
-    try {
-      const row = {
-        id: payload.id || uid('q'),
-        title: payload.title,
-        description: payload.description || '',
-        branch: payload.branch || 'learning',
-        area: payload.area || payload.branch || 'learning',
-        type: payload.type || 'custom',
-        xp: Number(payload.xp || 0),
-        minutes: Number(payload.minutes || 0),
-        status: 'active',
-        due_date: payload.due_date || today(),
-        created_at: nowIso()
-      };
-      if (isDemo()) { state.quests.unshift(row); return row; }
-      const data = await request('addQuest', row);
-      return data.row || row;
-    } catch (error) { window.showError(error.message); return null; }
+  function addEnglishActivity(payload){
+    const minutes = Number(payload.minutes || 15);
+    const task = addTask({
+      branch:'learning',
+      track:'english',
+      title: payload.title || `English · ${minutes} min`,
+      description: payload.note || 'clean practice',
+      xp: Number(payload.xp || (minutes >= 30 ? 20 : 10)),
+      status:'active'
+    });
+    completeTask(task.id);
+    const log = state().log.find(row => row.task_id === task.id);
+    if (log) log.minutes = minutes;
+    saveLocal();
+    return task;
   }
 
-  async function addEnglishActivity(payload){
-    try {
-      const row = {
-        id: payload.id || uid('eng'),
-        title: payload.title,
-        minutes: Number(payload.minutes || 0),
-        xp: Number(payload.xp || 0),
-        skills: payload.skills || [],
-        note: payload.note || '',
-        activity_date: payload.activity_date || today(),
-        created_at: nowIso()
-      };
-      if (isDemo()) {
-        state.englishActivities.unshift(row);
-        pushXp(row.xp, 'English', 'english_activity', row.id, row.title);
-        return row;
-      }
-      const data = await request('addEnglishActivity', row);
-      return data.row || row;
-    } catch (error) { window.showError(error.message); return null; }
+  function undoLastAction(){
+    const action = state().undoStack.shift();
+    if (!action) return false;
+    if (action.type === 'completeTask' || action.type === 'status') {
+      const index = state().tasks.findIndex(row => row.id === action.task_id);
+      if (index >= 0) state().tasks[index] = action.before;
+      if (action.log_id) state().log = state().log.filter(row => row.id !== action.log_id);
+    }
+    if (action.type === 'addTask') {
+      state().tasks = state().tasks.filter(row => row.id !== action.task_id);
+      state().log = state().log.filter(row => row.task_id !== action.task_id);
+    }
+    saveLocal();
+    return true;
   }
 
-  async function addProject(payload){
-    try {
-      const row = {
-        id: payload.id || String(payload.name || 'project').toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || uid('project'),
-        name: payload.name,
-        description: payload.description || '',
-        area: payload.area || 'hobby',
-        status: payload.status || 'active',
-        importance: payload.importance || 'средняя',
-        difficulty: payload.difficulty || 'средняя',
-        target_xp: Number(payload.target_xp || 100),
-        current_stage: payload.current_stage || '',
-        created_at: nowIso()
-      };
-      if (isDemo()) { state.projects.unshift(row); return row; }
-      const data = await request('addProject', row);
-      return data.row || row;
-    } catch (error) { window.showError(error.message); return null; }
+  function resetLocal(){
+    localStorage.removeItem(STORAGE_KEY);
+    Object.assign(state(), mergeDefaults(null));
+    saveLocal();
   }
-
-  async function addProjectTask(payload){
-    try {
-      const row = {
-        id: payload.id || uid('pt'),
-        project_id: payload.project_id,
-        title: payload.title,
-        description: payload.description || '',
-        xp: Number(payload.xp || 0),
-        status: 'active',
-        created_at: nowIso()
-      };
-      if (isDemo()) { state.projectTasks.unshift(row); return row; }
-      const data = await request('addProjectTask', row);
-      return data.row || row;
-    } catch (error) { window.showError(error.message); return null; }
-  }
-
-  async function getCurrentSession(){ return null; }
-  async function signIn(){ state.user = { email: 'google-sheets-backend' }; return { user: state.user }; }
-  async function signOut(){ state.user = null; return true; }
-  function onAuthChange(){ return { unsubscribe(){} }; }
-  async function loadXpEvents(){ await loadDashboardData(); return state.xpEvents; }
-  async function loadQuests(){ await loadDashboardData(); return state.quests; }
-  async function loadProjects(){ await loadDashboardData(); return state.projects; }
-  async function loadProjectTasks(){ await loadDashboardData(); return state.projectTasks; }
-  async function loadCourseLessons(){ await loadDashboardData(); return state.courseLessons; }
-  async function loadEnglishActivities(){ await loadDashboardData(); return state.englishActivities; }
-  async function loadSettings(){ await loadDashboardData(); return state.settings; }
 
   window.APP_API = {
-    getCurrentSession, signIn, signOut, onAuthChange,
-    loadDashboardData, loadXpEvents, loadQuests, loadProjects, loadProjectTasks, loadCourseLessons, loadEnglishActivities, loadSettings,
-    completeQuest, completeLesson, completeProjectTask,
-    addQuest, addEnglishActivity, addProject, addProjectTask
+    loadDashboardData,
+    completeTask,
+    setTaskStatus,
+    addTask,
+    addEnglishActivity,
+    undoLastAction,
+    resetLocal,
+    syncNow,
+    saveLocal
   };
 })();
