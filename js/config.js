@@ -1,4 +1,4 @@
 window.APP_CONFIG = {
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyIToqYWDJ-dZKwCdOKKcIw3Eqyv95F-FA8MLaUt75h-C_t7bNF4ocYw7jUyZSRuXEdqg/exec',
+  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyuQA5VKzvXeAy2NUtuqavnELHIMEsWZD2HcAYzVOs9C5uErlOfNpYL-TIVmOjfB4vd2Q/exec',
   DEMO_MODE: false
 };
