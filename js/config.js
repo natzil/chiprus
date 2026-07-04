@@ -1,4 +1,8 @@
 window.APP_CONFIG = {
-  GOOGLE_APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzKfVm5PAgMIok_9lOaiZ5PDtv-fhlV3WT_DBRyTk9f4-j1Q6TCowKccPfZf-s-7HGzcg/exec',
-  DEMO_MODE: false
+  SUPABASE_URL: '',
+  SUPABASE_PUBLISHABLE_KEY: '',
+  SUPABASE_ENABLED: false,
+  LOCAL_STORAGE_KEY: 'rpg-dashboard-state-v4',
+  QUEUE_STORAGE_KEY: 'rpg-dashboard-queue-v4',
+  DEBUG: false
 };

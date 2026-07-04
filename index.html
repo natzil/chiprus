@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -80,7 +80,7 @@
     </section>
 
     <main id="app-view" class="app-view"></main>
-    <footer>SYSTEM.CONSOLE — localStorage first, Sheets sync optional</footer>
+    <footer>SYSTEM.CONSOLE — localStorage first, Supabase sync optional</footer>
   </div>
 
   <nav class="m-bottom-nav">
@@ -95,27 +95,43 @@
   <div class="modal-backdrop" data-close-modal="admin-modal"></div>
   <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Task editor">
     <div class="modal-head"><h2>Добавить задачу</h2><button class="icon-btn" data-close-modal="admin-modal">×</button></div>
-    <form id="task-form" class="admin-form">
+    <form id="quest-form" class="admin-form">
       <label>Название<input name="title" required></label>
       <label>Описание<textarea name="description"></textarea></label>
       <div class="form-row">
-        <label>Ветка<select name="branch">
+        <label>Ветка<select name="branch_id">
           <option value="learning">Обучение</option>
           <option value="projects">Проекты</option>
           <option value="health">Здоровье / рутина</option>
           <option value="work">Работа / развитие</option>
         </select></label>
-        <label>Трек<input name="track" value="custom"></label>
+        <label>Трек<input name="track_id" value="custom"></label>
       </div>
-      <div class="form-row"><label>XP<input name="xp" type="number" value="20" min="0"></label><label>Status<select name="status"><option value="active">в процессе</option><option value="not_started">не начато</option></select></label></div>
+      <label>Цель<textarea name="goal"></textarea></label>
+      <label>Практика<textarea name="practice"></textarea></label>
+      <div class="form-row"><label>XP<input name="xp" type="number" value="20" min="0"></label><label>Status<select name="status"><option value="in_progress">в процессе</option><option value="not_started">не начато</option></select></label></div>
       <button class="primary-btn" type="submit">Сохранить</button>
     </form>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./js/config.js"></script>
-<script src="./js/googleSheetsClient.js"></script>
+<script src="./js/utils.js"></script>
 <script src="./js/state.js"></script>
+<script src="./js/storage.js"></script>
+<script src="./js/selectors.js"></script>
+<script src="./js/queue.js"></script>
+<script src="./js/supabaseClient.js"></script>
+<script src="./js/auth.js"></script>
+<script src="./js/sync.js"></script>
+<script src="./js/reducers.js"></script>
+<script src="./js/components.js"></script>
+<script src="./js/views-overview.js"></script>
+<script src="./js/views-branches.js"></script>
+<script src="./js/views-track.js"></script>
+<script src="./js/views-log.js"></script>
+<script src="./js/toast.js"></script>
 <script src="./js/api.js"></script>
 <script src="./js/render.js"></script>
 <script src="./js/app.js"></script>

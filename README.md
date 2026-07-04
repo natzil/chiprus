@@ -1,74 +1,79 @@
 # RPG Dashboard
 
-Local-first личная RPG-система в одном статическом сайте.
+Mobile-first личная RPG-система в тёмном terminal стиле. Главная логика теперь такая: сайт всегда работает из `localStorage`, а Supabase используется только как фоновая синхронизация. Если сеть или backend упали, интерфейс не ломается.
 
-## Архитектура
+## Что внутри
 
-- `overview` — мотивационный первый экран: level, XP, крупные бары, следующий ход.
-- `branches` — 4 основные ветки:
-  - Обучение
-  - Проекты
-  - Здоровье / рутина
-  - Работа / развитие
-- `branch` — задачи и треки внутри выбранной ветки.
-- `track` — глубокий список задач конкретного направления, например CCNA Day 1-63.
-- `log` — история выполненного, sync status и undo.
+- `index.html` — оболочка приложения и модальное окно добавления квеста.
+- `css/style.css` — текущий RPG/terminal visual language плюс мобильные фиксы.
+- `js/state.js` — стартовая структура данных: branches, tracks, quests, logs, reviews, queue.
+- `js/render.js` и `js/views-*.js` — pseudo-pages без роутера: overview, branches, branch, track, quest detail, log, settings.
+- `js/reducers.js` — действия: start, save, checklist, complete, review later, add, undo.
+- `js/storage.js` — локальный snapshot.
+- `js/queue.js` и `js/sync.js` — offline queue и фоновый Supabase sync.
+- `supabase/schema.sql` — таблицы.
+- `supabase/rls.sql` — RLS по `owner_id = auth.uid()`.
+- `supabase/seed.sql` — стартовые ветки, CCNA 1-63 и базовые задачи.
 
-## Хранение данных
+## Экраны
 
-Главный источник данных — `localStorage` браузера.
+- `overview` — уровень, XP, крупные бары, следующий ход, быстрые действия.
+- `branches` — 4 ветки: Обучение, Проекты, Здоровье, Работа / развитие.
+- `branch-detail` — треки и активные задачи выбранной ветки.
+- `track-detail` — глубокий список задач, например CCNA Day 1-63.
+- `quest-detail` — цель, теория, практика, checklist, заметка, результат, кнопка done.
+- `log` — история выполненного, sync status, undo.
+- `settings` — sync/reset.
 
-Google Sheets не обязателен. Если Apps Script недоступен, сайт продолжает работать локально:
+## Supabase setup
 
-- задачи выполняются;
-- XP начисляется;
-- выполненные задачи уходят из следующего хода;
-- история остаётся в логе;
-- `Undo` отменяет последнее действие.
+1. Создай Supabase project.
+2. В Auth включи `Allow anonymous sign-ins`.
+3. В SQL Editor выполни по порядку:
+   - `supabase/schema.sql`
+   - `supabase/rls.sql`
+   - `supabase/seed.sql`
+4. Скопируй `js/config.example.js` в `js/config.js`.
+5. Заполни:
+   - `SUPABASE_URL`
+   - `SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_ENABLED: true`
 
-## Файлы
+Важно: в браузер кладём только publishable key. Service role key сюда нельзя.
 
-- `index.html` — app shell и модальные окна.
-- `css/style.css` — текущий terminal/RPG visual language плюс новые view-компоненты.
-- `js/state.js` — понятная структура данных: branches, tracks, tasks, log, undoStack, sync.
-- `js/api.js` — localStorage + фоновой Google Sheets sync.
-- `js/render.js` — рендер overview / branches / branch / track / log.
-- `js/app.js` — клики, навигация, done/status/undo/sync.
-- `google-apps-script/Code.gs` — опциональный Google Sheets sync backend.
+## Как работает sync
 
-## Google Sheets sync
+- При открытии сайта создаётся anonymous session.
+- Все действия сразу сохраняются локально.
+- Операции попадают в очередь.
+- Sync пробует отправить очередь в Supabase.
+- Если Supabase не отвечает, сайт остаётся рабочим, а очередь ждёт следующей попытки.
+- `Undo` откатывает последнее локальное действие и тоже ставит операцию в очередь.
 
-1. Создай Google Sheet.
-2. Открой Apps Script.
-3. Вставь `google-apps-script/Code.gs`.
-4. Запусти `setup()`.
-5. Deploy → Web app:
-   - Execute as: `Me`
-   - Who has access: `Anyone`
-6. Вставь `/exec` URL в `js/config.js`.
-
-Sync идёт в фоне. Ошибки не блокируют интерфейс.
-
-## Основные данные по умолчанию
+## Данные по умолчанию
 
 Обучение:
-- CCNA: 63 урока Jeremy's IT Lab
-- English daily practice
-- Linux базовые повторения
+- CCNA: 63 урока Jeremy's IT Lab.
+- English: короткие daily practice задачи.
+- Linux: базовые повторения и later tasks.
 
 Проекты:
-- NAS-сервер
-- ESP32 + RFID замок
-- Arduino бар
-- Чиптюнинг развитие
+- NAS-сервер.
+- ESP32 + RFID замок.
+- Arduino бар / mini project.
+- Чиптюнинг развитие.
 
 Здоровье:
-- Бассейн 6:30
-- Базовая рутина
-- Ходьба / активность
+- Бассейн 2-3 раза в неделю в 6:30.
+- Базовая рутина.
+- Ходьба / активность.
 
 Работа / развитие:
-- NOC/DevOps путь
-- Резюме
-- Linux/network practice
-- Собеседования
+- NOC/DevOps путь.
+- Резюме.
+- Linux/network practice.
+- Собеседования.
+
+## Публикация
+
+Это статический сайт. Можно положить на GitHub Pages или обычный hosting. Для GitHub Pages достаточно обновить `index.html`, `css/`, `js/`, `supabase/` и `CNAME`, если нужен домен.
