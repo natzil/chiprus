@@ -458,6 +458,16 @@
 </div>
 
 <script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = 'https://fzsjyxsekroahmcptofl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6c2p5eHNla3JvYWhtY3B0b2ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNjE0MTMsImV4cCI6MjA5ODczNzQxM30.6JU68SCRKpI0on8mm7iNcPo6y7i_ROgLX8DX7yorXJg';
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 const LEVELS = [0,100,250,500,900,1400,2000,2800,3800,5000];
 function thresholdFor(level){
   if(level <= 10) return LEVELS[level-1];
